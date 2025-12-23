@@ -9,7 +9,7 @@ import pathlib
 # --------------------------------------------------
 # Importar la lógica del proyecto principal
 # --------------------------------------------------
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = pathlib.Path(__file__).parent.parent
 sys.path.append(BASE_DIR)
 
 import services as fn
@@ -47,9 +47,9 @@ if marca:
             col1, col2 = st.columns([1, 3])
             
             # Imagen
-            image_path = pathlib.Path(r[3])  # índice 3 = imagen_path
-            if image_path.exists():
-                col1.image(str(image_path), width=100)
+            img_file = BASE_DIR / "images" / r[3]
+            if img_file.exists():
+                col1.image(str(img_file), width=100)
             else:
                 col1.text("No image")
             
