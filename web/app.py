@@ -26,7 +26,14 @@ st.set_page_config(
 
 st.title("Maria's Collection")
 st.caption("La colección de chapas de botella de Maria A.G.")
-st.markdown("<style> .stImage img {border-radius: 8px;} </style>", unsafe_allow_html=True)
+st.markdown("""
+<style>
+/* Quitar iconos/enlaces de anclaje en títulos */
+h1 a, h2 a, h3 a, h4 a {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
 st.sidebar.header("Opciones")
 
 # --------------------------------------------------
@@ -80,7 +87,7 @@ st.subheader("Buscar por Imagen")
 uploaded_file = st.file_uploader("Sube una imagen", type=["png", "jpg", "jpeg"])
 
 if uploaded_file is not None:
-    resultados = fn.buscar_por_imagen(uploaded_file, top_k=5)
+    resultados = fn.buscar_por_imagen_simple(uploaded_file, top_k=5)
     if not resultados:
         st.info("No se han encontrado coincidencias.")
     else:

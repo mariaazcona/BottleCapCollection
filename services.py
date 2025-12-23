@@ -147,6 +147,16 @@ def buscar_por_imagen(path_query, top_k=8):
         results.append((row, score))
     return results
 
+def buscar_por_imagen_simple(path_query, top_k=5):
+    """
+    Retorna SOLO filas:
+    (id, marca, tipo, imagen_path)
+    """
+    resultados_con_score = buscar_por_imagen(path_query, top_k)
+
+    # Quitar el score
+    return [row for row, score in resultados_con_score]
+
 # ----------------- Export to Excel (timestamped) -----------------
 def exportar_a_excel_version():
     os.makedirs("data/exports", exist_ok=True)
