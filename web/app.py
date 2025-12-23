@@ -10,7 +10,7 @@ import pathlib
 # Importar la lógica del proyecto principal
 # --------------------------------------------------
 BASE_DIR = pathlib.Path(__file__).parent.parent
-sys.path.append(BASE_DIR)
+sys.path.append(str(BASE_DIR))
 
 import services as fn
 
