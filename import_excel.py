@@ -40,7 +40,7 @@ for _, row in df.iterrows():
 # We'll query DB for embedding presence
 conn = sqlite3.connect(fn.DB_FILE)
 cur = conn.cursor()
-cur.execute("SELECT imagen, embedding FROM chapas")
+cur.execute("SELECT imagen, embedding FROM capcollection")
 have_emb = {r[0]: r[1] for r in cur.fetchall() if r[1] is not None}
 conn.close()
 

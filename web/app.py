@@ -40,13 +40,19 @@ st.sidebar.header("Opciones")
 # Funciones
 # --------------------------------------------------
 def mostrar_resultados(resultados):
+    IMAGES_DIR = BASE_DIR / "images"
+
     for r in resultados:
         col1, col2 = st.columns([1, 3])
-        img_file = BASE_DIR/r[3]
+
+        img_name = pathlib.Path(r[3]).name
+        img_file = IMAGES_DIR / img_name
+
         if img_file.exists():
             col1.image(str(img_file), width=100)
         else:
             col1.text("No hay imagen.")
+
         col2.markdown(f"**Marca:** {r[1]}")
         col2.markdown(f"**Tipo:** {r[2]}")
         col2.markdown("---")
