@@ -1,12 +1,12 @@
-# funciones.py
+# services.py
 import sqlite3
 import os
 import numpy as np
 from datetime import datetime
 import pandas as pd
 
-DB_FILE = "chapas.db"
-IMAGES_DIR = "imagenes"
+DB_FILE = "data/capcollection.db"
+IMAGES_DIR = "images"
 _EMBEDDINGS_LOADED = False
 _emb_matrix = None      # numpy float32 (N, D)
 _emb_ids = None         # list of row tuples (id, marca, tipo, imagen)
@@ -18,7 +18,7 @@ def crear_bd():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS chapas (
+    CREATE TABLE IF NOT EXISTS capcollection (
         id INTEGER PRIMARY KEY,
         marca TEXT,
         tipo TEXT,
@@ -33,10 +33,10 @@ def ensure_embedding_column():
     # safe add column if not exists (sqlite doesn't support IF NOT EXISTS for ALTER)
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("PRAGMA table_info(chapas)")
+    cur.execute("PRAGMA table_info(capcollection)")
     cols = [r[1] for r in cur.fetchall()]
     if "embedding" not in cols:
-        cur.execute("ALTER TABLE chapas ADD COLUMN embedding BLOB")
+        cur.execute("ALTER TABLE capcollection ADD COLUMN embedding BLOB")
         conn.commit()
     conn.close()
 
@@ -47,7 +47,7 @@ def insertar_chapa(id_, marca, tipo, imagen_path, emb_bytes=None):
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
     cur.execute("""
-        INSERT OR REPLACE INTO chapas (id, marca, tipo, imagen, embedding)
+        INSERT OR REPLACE INTO capcollection (id, marca, tipo, imagen, embedding)
         VALUES (?, ?, ?, ?, ?)
     """, (id_, marca, tipo, imagen_path, emb_bytes))
     conn.commit()
@@ -56,7 +56,7 @@ def insertar_chapa(id_, marca, tipo, imagen_path, emb_bytes=None):
 def obtener_todas_chapas():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("SELECT id, marca, tipo, imagen, embedding FROM chapas ORDER BY id")
+    cur.execute("SELECT id, marca, tipo, imagen, embedding FROM capcollection ORDER BY id")
     datos = cur.fetchall()
     conn.close()
     return datos
@@ -114,7 +114,7 @@ def reload_embeddings():
 def buscar_por_marca(texto):
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-    cur.execute("SELECT id, marca, tipo, imagen FROM chapas WHERE LOWER(marca) LIKE ?", (f"%{texto.lower()}%",))
+    cur.execute("SELECT id, marca, tipo, imagen FROM capcollection WHERE LOWER(marca) LIKE ?", (f"%{texto.lower()}%",))
     datos = cur.fetchall()
     conn.close()
     return datos
@@ -148,11 +148,11 @@ def buscar_por_imagen(path_query, top_k=8):
 
 # ----------------- Export to Excel (timestamped) -----------------
 def exportar_a_excel_version():
-    os.makedirs("export_excel", exist_ok=True)
+    os.makedirs("data/export_excel", exist_ok=True)
     fecha_hora = datetime.now().strftime("%Y%m%d_%H%M%S")
-    archivo = os.path.join("export_excel", f"chapas_{fecha_hora}.xlsx")
+    archivo = os.path.join("data/export_excel", f"capcollection_{fecha_hora}.xlsx")
     conn = sqlite3.connect(DB_FILE)
-    df = pd.read_sql_query("SELECT id, marca, tipo, imagen FROM chapas ORDER BY id", conn)
+    df = pd.read_sql_query("SELECT id, marca, tipo, imagen FROM capcollection ORDER BY id", conn)
     conn.close()
     df.to_excel(archivo, index=False)
     return archivo

@@ -4,8 +4,8 @@ import threading
 from tkinter import *
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk, ImageOps
-import funciones as fn
-import theme_dark as theme
+import services as fn
+import ui_theme as theme
 
 # Inicializar base de datos
 fn.crear_bd()

@@ -1,14 +1,14 @@
-# importar_excel.py
+# import_excel.py
 import sqlite3
 import pandas as pd
 import os
 import numpy as np
 from math import ceil
 import funciones_modelo as fm
-import funciones as fn
+import services as fn
 
-EXCEL_FILE = "chapas.xlsx"
-IMAGES_DIR = "imagenes"
+EXCEL_FILE = "data/capcollection.xlsx"
+IMAGES_DIR = "images"
 BATCH_SIZE = 16  # ajustar según memoria/CPU
 
 # Ensure DB + column
