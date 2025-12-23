@@ -1,4 +1,5 @@
 # services.py
+# Core business logic: database access, image processing, embeddings and search functions.
 import sqlite3
 import os
 import numpy as np
@@ -148,9 +149,9 @@ def buscar_por_imagen(path_query, top_k=8):
 
 # ----------------- Export to Excel (timestamped) -----------------
 def exportar_a_excel_version():
-    os.makedirs("data/export_excel", exist_ok=True)
+    os.makedirs("data/exports", exist_ok=True)
     fecha_hora = datetime.now().strftime("%Y%m%d_%H%M%S")
-    archivo = os.path.join("data/export_excel", f"capcollection_{fecha_hora}.xlsx")
+    archivo = os.path.join("data/exports", f"capcollection_{fecha_hora}.xlsx")
     conn = sqlite3.connect(DB_FILE)
     df = pd.read_sql_query("SELECT id, marca, tipo, imagen FROM capcollection ORDER BY id", conn)
     conn.close()

@@ -1,4 +1,5 @@
 # import_excel.py
+# Imports caps data from the master Excel file into the SQLite database.
 import sqlite3
 import pandas as pd
 import os

@@ -1,5 +1,6 @@
-# theme_dark.py
+# ui_theme.py
 # Theme helpers for the "Dark Mode Pro" UI
+# UI theme definitions (colors, fonts, spacing) used by the application.
 
 import tkinter as tk
 
