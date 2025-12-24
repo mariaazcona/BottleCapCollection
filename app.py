@@ -39,10 +39,6 @@ def mostrar_resultados(resultados):
         ruta = r[3].replace("\\", "/") 
         img_file = BASE_DIR / ruta
 
-        st.write("BASE_DIR:", BASE_DIR)
-        st.write("Images dir exists:", (BASE_DIR/"images").exists())
-        st.write("Trying image:", img_file)
-
         if img_file.exists():
             col1.image(str(img_file), width=100)
         else:
