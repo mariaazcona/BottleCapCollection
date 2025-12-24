@@ -11,8 +11,9 @@ import datetime
 # --------------------------------------------------
 # Importar la lógica del proyecto principal
 # --------------------------------------------------
-APP_DIR = pathlib.Path(__file__).parent
-IMAGES_DIR = APP_DIR.parent / "images"
+APP_DIR = pathlib.Path(__file__).parent        # web/
+ROOT_DIR = APP_DIR.parent                     # repo raíz
+IMAGES_DIR = ROOT_DIR / "images"              # repo/images
 
 import services as fn
 
@@ -58,7 +59,7 @@ def mostrar_resultados(resultados):
         if img_file.exists():
             col1.image(str(img_file), width=100)
         else:
-            st.text(f"No image: {img_file}")
+            st.info(f"No hay imagen: {image_name}")
 
         col2.markdown(f"**Marca:** {r[1]}")
         col2.markdown(f"**Tipo:** {r[2]}")
