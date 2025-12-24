@@ -44,13 +44,12 @@ def mostrar_resultados(resultados):
     for r in resultados:
         col1, col2 = st.columns([1, 3])
 
-        image_name = pathlib.Path(r[3]).name
-        img_file = BASE_DIR / image_name
+        img_file = BASE_DIR / r[3]
 
         if img_file.exists():
-            col1.image(str(image_name), width=100)
+            col1.image(str(img_file), width=100)
         else:
-            st.text(f"No image: {image_name}")
+            st.text(f"No image: {img_file}")
 
         col2.markdown(f"**Marca:** {r[1]}")
         col2.markdown(f"**Tipo:** {r[2]}")
