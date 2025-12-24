@@ -11,8 +11,8 @@ import datetime
 # --------------------------------------------------
 # Importar la lógica del proyecto principal
 # --------------------------------------------------
-BASE_DIR = pathlib.Path(__file__).parent.parent
-sys.path.append(str(BASE_DIR))
+APP_DIR = pathlib.Path(__file__).parent
+IMAGES_DIR = APP_DIR.parent / "images"
 
 import services as fn
 
@@ -44,8 +44,17 @@ def mostrar_resultados(resultados):
     for r in resultados:
         col1, col2 = st.columns([1, 3])
 
-        img_file = BASE_DIR / r[3]
+        image_name = pathlib.Path(r[3]).name
+        img_file = IMAGES_DIR / image_name
 
+
+        st.write("BASE_DIR:", APP_DIR)
+        st.write("Trying image:", img_file)
+        st.write("Images dir exists:", (APP_DIR / "images").exists())
+        st.write("Files in images:", list((APP_DIR / "images").glob("*")) if (APP_DIR / "images").exists() else "NO DIR")
+
+    
+        
         if img_file.exists():
             col1.image(str(img_file), width=100)
         else:
