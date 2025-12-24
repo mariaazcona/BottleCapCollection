@@ -49,10 +49,12 @@ def mostrar_resultados(resultados):
         img_file = IMAGES_DIR / image_name
 
 
-        st.write("BASE_DIR:", APP_DIR)
+        st.write("APP_DIR:", APP_DIR)
+        st.write("ROOT_DIR:", ROOT_DIR)
+        st.write("IMAGES_DIR:", IMAGES_DIR)
+        st.write("Images dir exists:", IMAGES_DIR.exists())
+        st.write("Files in images:", list(IMAGES_DIR.glob("*")) if IMAGES_DIR.exists() else "NO DIR")
         st.write("Trying image:", img_file)
-        st.write("Images dir exists:", (APP_DIR / "images").exists())
-        st.write("Files in images:", list((APP_DIR / "images").glob("*")) if (APP_DIR / "images").exists() else "NO DIR")
 
     
         
