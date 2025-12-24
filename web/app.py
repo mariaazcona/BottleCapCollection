@@ -45,7 +45,7 @@ def mostrar_resultados(resultados):
         col1, col2 = st.columns([1, 3])
 
         image_name = pathlib.Path(r[3]).name
-        img_file = BASE_DIR / "images" / image_name
+        img_file = BASE_DIR / image_name
 
         if img_file.exists():
             col1.image(str(img_file), width=100)
