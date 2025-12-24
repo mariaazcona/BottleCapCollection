@@ -13,7 +13,7 @@ import datetime
 # --------------------------------------------------
 APP_DIR = pathlib.Path(__file__).parent        # web/
 ROOT_DIR = APP_DIR.parent                     # repo raíz
-IMAGES_DIR = ROOT_DIR / "images"              # repo/images
+IMAGES_DIR = ROOT_DIR              # repo/images
 
 import services as fn
 
