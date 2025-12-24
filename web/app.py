@@ -99,3 +99,7 @@ if uploaded_file is not None:
     else:
         st.success(f"{len(resultados)} resultados encontrados")
         mostrar_resultados(resultados)
+
+st.write("Archivos en images/:")
+for p in (BASE_DIR / "images").glob("*"):
+    st.write(p.name)
