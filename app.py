@@ -35,7 +35,9 @@ def mostrar_resultados(resultados):
     for r in resultados:
         col1, col2 = st.columns([1, 3])
 
-        img_file = BASE_DIR / r[3]
+        # Normalizar ruta para Linux 
+        ruta = r[3].replace("\\", "/") 
+        img_file = BASE_DIR / ruta
 
         st.write("BASE_DIR:", BASE_DIR)
         st.write("Images dir exists:", (BASE_DIR/"images").exists())
