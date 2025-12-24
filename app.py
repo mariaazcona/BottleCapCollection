@@ -3,18 +3,10 @@
 
 import streamlit as st
 import pathlib
-import sys
-import sqlite3
-import pandas as pd
-import datetime
-
-# --------------------------------------------------
-# Importar la lógica del proyecto principal
-# --------------------------------------------------
-APP_DIR = pathlib.Path(__file__).parent        # web/
-ROOT_DIR = APP_DIR.parent                     # repo raíz
-
 import services as fn
+
+BASE_DIR = pathlib.Path(__file__).resolve().parent
+
 
 # --------------------------------------------------
 # Configuración básica de la app
@@ -40,22 +32,15 @@ st.sidebar.header("Opciones")
 # Funciones
 # --------------------------------------------------
 def mostrar_resultados(resultados):
-
     for r in resultados:
         col1, col2 = st.columns([1, 3])
 
-        img_file = ROOT_DIR / r[3]
+        img_file = BASE_DIR / r[3]
 
-
-        st.write("APP_DIR:", APP_DIR)
-        st.write("ROOT_DIR:", ROOT_DIR)
-        st.write("IMAGES_DIR:", ROOT_DIR/"images")
-        st.write("Images dir exists:", (ROOT_DIR/"images").exists())
-        st.write("Files in images:", list((ROOT_DIR/"images").glob("*")) if (ROOT_DIR/"images").exists() else "NO DIR")
+        st.write("BASE_DIR:", BASE_DIR)
+        st.write("Images dir exists:", (BASE_DIR/"images").exists())
         st.write("Trying image:", img_file)
 
-    
-        
         if img_file.exists():
             col1.image(str(img_file), width=100)
         else:
