@@ -13,7 +13,6 @@ import datetime
 # --------------------------------------------------
 APP_DIR = pathlib.Path(__file__).parent        # web/
 ROOT_DIR = APP_DIR.parent                     # repo raíz
-IMAGES_DIR = ROOT_DIR              # repo/images
 
 import services as fn
 
@@ -45,14 +44,14 @@ def mostrar_resultados(resultados):
     for r in resultados:
         col1, col2 = st.columns([1, 3])
 
-        img_file = IMAGES_DIR / r[3]
+        img_file = ROOT_DIR / r[3]
 
 
         st.write("APP_DIR:", APP_DIR)
         st.write("ROOT_DIR:", ROOT_DIR)
-        st.write("IMAGES_DIR:", IMAGES_DIR)
-        st.write("Images dir exists:", IMAGES_DIR.exists())
-        st.write("Files in images:", list(IMAGES_DIR.glob("*")) if IMAGES_DIR.exists() else "NO DIR")
+        st.write("IMAGES_DIR:", ROOT_DIR/"images")
+        st.write("Images dir exists:", (ROOT_DIR/"images").exists())
+        st.write("Files in images:", list((ROOT_DIR/"images").glob("*")) if (ROOT_DIR/"images").exists() else "NO DIR")
         st.write("Trying image:", img_file)
 
     
