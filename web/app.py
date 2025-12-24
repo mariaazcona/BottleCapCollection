@@ -40,18 +40,16 @@ st.sidebar.header("Opciones")
 # Funciones
 # --------------------------------------------------
 def mostrar_resultados(resultados):
-    IMAGES_DIR = BASE_DIR / "images"
 
     for r in resultados:
         col1, col2 = st.columns([1, 3])
 
-        img_name = pathlib.Path(r[3]).name
-        img_file = IMAGES_DIR / img_name
+        img_file = (BASE_DIR / r[3]).resolve()
 
         if img_file.exists():
             col1.image(str(img_file), width=100)
         else:
-            col1.text("No hay imagen.")
+            st.text(f"No image: {img_file}")
 
         col2.markdown(f"**Marca:** {r[1]}")
         col2.markdown(f"**Tipo:** {r[2]}")
@@ -99,7 +97,3 @@ if uploaded_file is not None:
     else:
         st.success(f"{len(resultados)} resultados encontrados")
         mostrar_resultados(resultados)
-
-st.write("Archivos en images/:")
-for p in (BASE_DIR / "images").glob("*"):
-    st.write(p.name)
