@@ -1,64 +1,53 @@
-# 🍾 CapCollection  
-### AI-Powered Bottle Cap Catalog Manager
+# CapCollection
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Status](https://img.shields.io/badge/Status-Active-success)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey)
-
-CapCollection is a lightweight offline desktop application designed to organize, browse, and search your personal bottle cap collection.  
-It uses deep-learning image embeddings to match caps visually and provides a fast, clean, and intuitive interface.
+CapCollection es una aplicación ligera en Streamlit para gestionar, buscar y visualizar una colección personal de chapas de botella.  
+Utiliza embeddings generados con MobileNetV3 para realizar búsquedas por similitud de imagen.
 
 ---
 
-## ✨ Features
+## Características
 
-- 📥 **Excel Import**
-  - Load caps from an `.xlsx` file with ID, brand, type, and image path.
-
-- 🧠 **AI Image Similarity Search**
-  - Compare a new image to your database using MobileNetV3-Small embeddings.
-
-- ⚡ **Optimized Performance**
-  - Model loads only when needed  
-  - Embeddings saved as float16 (half memory usage)  
-  - Instant vectorized similarity search
-
-- 🗂️ **SQLite Local Database**
-  - Fully offline  
-  - Fast, compact, persistent
-
-- 🖥️ **Tkinter Desktop Interface**
-  - Search by brand  
-  - Search by image  
-  - Preview cap image + metadata  
-  - Export updated Excel files
-
-- 💾 **Automatic Exports**
-  - Timestamped Excel backups inside `exports/`
+- Importación desde Excel (`.xlsx`) con ID, marca, tipo e imagen.
+- Búsqueda por marca.
+- Búsqueda por imagen mediante embeddings.
+- Base de datos local en SQLite.
+- Embeddings almacenados en formato float16 para reducir espacio.
+- Exportación de la colección a Excel.
+- Funcionamiento completamente offline.
 
 ---
 
-## 📁 Project Structure
+## Estructura del proyecto
+
 CapCollection/
 │
-├── chapas_gui.py # Main GUI application
-├── funciones.py # Database and logic
-├── funciones_modelo.py # AI model + image embeddings
-├── importar_excel.py # Excel importer → fills SQLite + embeddings
+├── app.py                      # Interfaz Streamlit
+├── modules/
+│   ├── services.py             # Acceso a BD, búsquedas, embeddings en RAM
+│   ├── funciones_modelo.py    # Modelo MobileNetV3 + generación de embeddings
+│   └── import_excel.py        # Importador desde Excel
 │
-├── chapas.db # (Auto-generated) database
-├── imagenes/ # User's image folder
-└── exports/ # Auto-generated exports folder
+├── data/
+│   ├── capcollection.db        # Base de datos SQLite
+│   └── capcollection.xlsx      # Archivo maestro de importación
+│
+├── images/                    # Carpeta con imágenes de chapas
+└── requirements.txt
 
 ---
 
-## 🧰 Requirements
+## Requisitos
 
-- Python **3.10+**
-- pip packages:
+- Python 3.10+
+- Dependencias:
+streamlit
+pillow
+numpy
+pandas
+torch
+torchvision
 
-```bash
-pip install pillow numpy pandas openpyxl torch torchvision
+---
 
-
+## Ejecución
+streamlit run app.py

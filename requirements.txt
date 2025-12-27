@@ -1,9 +1,6 @@
-# Python dependencies required to run CapCollection.
-streamlit
-pillow
-numpy
-pandas
-torch
-torchvision
-opencv-python-headless
-scikit-learn
+streamlit>=1.30
+pillow>=10.0
+numpy>=1.24
+pandas>=2.0
+torch>=2.1
+torchvision>=0.16
