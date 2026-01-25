@@ -1,0 +1,123 @@
+/* Variables de tema (se sobreescriben desde app.py con :root) */
+:root {
+    --bg-main: #1e1e1e;
+    --bg-card: #2a2a2a;
+    --text-main: #eeeeee;
+    --text-muted: #bbbbbb;
+}
+
+/* Fondo y texto global */
+html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
+    background-color: var(--bg-main) ;
+    color: var(--text-main) ;
+}
+
+/* Quitar comportamiento de enlace en títulos */
+h1 a, h2 a, h3 a, h4 a {
+    pointer-events: none ;
+    text-decoration: none ;
+    color: inherit ;
+    cursor: default ;
+}
+
+/* Imágenes sin barras ni fondos raros */
+img, .stImage > img {
+    background: transparent;
+    padding: 0 ;
+    margin: 0 ;
+    border-radius: 6px;
+}
+
+/* Tarjetas generales: sin sombras, separadas por línea */
+.cap-card {
+    background-color: var(--bg-card) ;
+    color: var(--text-main) ;
+    border-bottom: 1px solid var(--text-muted) ;
+    border-radius: 0 ;
+    box-shadow: none ;
+    padding: 12px 8px;
+    margin-bottom: 4px;
+}
+
+/* Lista (buscar por marca/imagen) */
+.cap-card-list {
+    display: block;
+}
+
+/* Cuadrícula (mostrar todas) */
+.cap-card-grid {
+    height: 260px;  /* altura fija para alinear filas en escritorio */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+/* Títulos y textos */
+.cap-title {
+    font-weight: 600;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cap-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.cap-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.cap-title-center,
+.cap-subtitle-center,
+.cap-meta-center {
+    text-align: center;
+}
+
+/* Radio horizontal (navegación) más limpio */
+div[role="radiogroup"] > label {
+    margin-right: 16px;
+}
+
+/* Botones */
+.stButton>button {
+    background-color: #0d7377;
+    color: #ffffff;
+    border-radius: 6px;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background-color 0.1s ease, transform 0.1s ease;
+}
+
+.stButton>button:hover {
+    background-color: #14a098;
+    transform: translateY(-1px);
+}
+
+/* Inputs texto */
+.stTextInput>div>div>input {
+    background-color: var(--bg-card) ;
+    color: var(--text-main) ;
+    border-radius: 6px ;
+}
+
+/* File uploader */
+.stFileUploader {
+    background-color: var(--bg-card) ;
+    padding: 0.5rem;
+    border-radius: 8px;
+}
+
+/* Responsive móvil */
+@media (max-width: 768px) {
+    .cap-card-grid {
+        height: auto; /* en móvil dejamos que se adapte más */
+    }
+}

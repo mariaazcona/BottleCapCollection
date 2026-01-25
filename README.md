@@ -24,14 +24,13 @@ CapCollection/
 ├── app.py                      # Interfaz Streamlit
 ├── modules/
 │   ├── services.py             # Acceso a BD, búsquedas, embeddings en RAM
-│   ├── funciones_modelo.py    # Modelo MobileNetV3 + generación de embeddings
-│   └── import_excel.py        # Importador desde Excel
+│   ├── funciones_modelo.py     # Modelo MobileNetV3 + generación de embeddings
+│   └── import_excel.py         # Importador desde Excel
 │
 ├── data/
-│   ├── capcollection.db        # Base de datos SQLite
-│   └── capcollection.xlsx      # Archivo maestro de importación
+│   └── capcollection.db        # Base de datos SQLite
 │
-├── images/                    # Carpeta con imágenes de chapas
+├── images/                     # Carpeta con imágenes de chapas
 └── requirements.txt
 
 ---
