@@ -1,70 +1,95 @@
-# import_excel.py
-# Importa datos desde el Excel maestro a la base de datos SQLite.
+"""
+import_excel.py
+----------------
+Script para importar datos desde el archivo Excel maestro y sincronizarlos
+con la base de datos SQLite. También calcula embeddings para las imágenes
+que aún no los tienen.
 
-import os
-import sqlite3
-import numpy as np
-import pandas as pd
-from math import ceil
-
-import embeddings as fm
-import services as fn
+Responsabilidades:
+- Leer el Excel principal
+- Validar rutas de imágenes
+- Insertar o actualizar registros en la BD
+- Calcular embeddings por lotes
+"""
 
 from pathlib import Path
+from math import ceil
+import os
+import sqlite3
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+import numpy as np
+import pandas as pd
 
-EXCEL_FILE = BASE_DIR / "assets" / "data" / "capcollection.xlsx"
-IMAGES_DIR = BASE_DIR / "assets" / "images"
-
-BATCH_SIZE = 16  # Ajustar según recursos disponibles
+import services as fn
+import embeddings as fm
 
 
-# --------------------------------------------------
-# Inicialización de la base de datos
-# --------------------------------------------------
-fn.crear_bd()
+# ======================================================
+# 1. CONFIGURACIÓN
+# ======================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+EXCEL_PATH = PROJECT_ROOT / "assets" / "data" / "capcollection.xlsx"
+IMAGES_DIR = PROJECT_ROOT / "assets" / "images"
+
+BATCH_SIZE = 16  # Ajustable según recursos disponibles
+
+
+# ======================================================
+# 2. INICIALIZACIÓN DE LA BASE DE DATOS
+# ======================================================
+
+fn.create_database()
 fn.ensure_embedding_column()
 
 
-# --------------------------------------------------
-# Cargar datos desde Excel
-# --------------------------------------------------
-df = pd.read_excel(EXCEL_FILE)
+# ======================================================
+# 3. CARGA DEL EXCEL
+# ======================================================
+
+if not EXCEL_PATH.exists():
+    raise FileNotFoundError(f"No se encontró el archivo Excel: {EXCEL_PATH}")
+
+df = pd.read_excel(EXCEL_PATH)
 
 # Obtener rutas ya existentes en la BD
-rows = fn.obtener_todas_chapas()
-existing_paths = {r[3] for r in rows}  # columna imagen
+rows = fn.get_all_caps()
+existing_paths = {r[3] for r in rows}  # columna 'imagen'
 
 
-# --------------------------------------------------
-# Preparar lista de elementos a procesar
-# --------------------------------------------------
+# ======================================================
+# 4. PREPARAR LISTA DE ELEMENTOS A PROCESAR
+# ======================================================
+
 to_process = []
 
 for _, row in df.iterrows():
-    if pd.isna(row.get("id")) or pd.isna(row.get("imagen")):
+    cap_id = row.get("id")
+    image_name = row.get("imagen")
+
+    if pd.isna(cap_id) or pd.isna(image_name):
         continue
 
-    imagen_name = str(row["imagen"])
-    imagen_path = IMAGES_DIR / imagen_name
+    image_path = IMAGES_DIR / str(image_name)
 
-    if not os.path.exists(imagen_path):
-        print(f"Imagen no encontrada: {imagen_path}")
+    if not image_path.exists():
+        print(f"[ADVERTENCIA] Imagen no encontrada: {image_path}")
         continue
 
     to_process.append((
-        int(row["id"]),
+        int(cap_id),
         row.get("marca", ""),
         row.get("tipo", ""),
-        imagen_path
+        image_path
     ))
 
 
-# --------------------------------------------------
-# Determinar qué imágenes necesitan embedding
-# --------------------------------------------------
-with sqlite3.connect(fn.DB_FILE) as conn:
+# ======================================================
+# 5. DETERMINAR QUÉ IMÁGENES NECESITAN EMBEDDING
+# ======================================================
+
+with sqlite3.connect(fn.DB_PATH) as conn:
     cur = conn.cursor()
     cur.execute("SELECT imagen, embedding FROM capcollection")
     have_emb = {img: emb for img, emb in cur.fetchall() if emb is not None}
@@ -74,14 +99,15 @@ indexes_to_compute = []
 
 for idx, item in enumerate(to_process):
     _, _, _, path = item
-    if path not in have_emb:
+    if str(path) not in have_emb:
         paths_to_compute.append(path)
         indexes_to_compute.append(idx)
 
 
-# --------------------------------------------------
-# Calcular embeddings por lotes
-# --------------------------------------------------
+# ======================================================
+# 6. CALCULAR EMBEDDINGS POR LOTES
+# ======================================================
+
 if paths_to_compute:
     n_batches = ceil(len(paths_to_compute) / BATCH_SIZE)
 
@@ -90,7 +116,9 @@ if paths_to_compute:
         end = start + BATCH_SIZE
 
         batch_paths = paths_to_compute[start:end]
-        emb_batch = fm.batch_imagenes_a_embeddings(batch_paths)  # float32 (N, D)
+
+        # Embeddings float32 (N, D)
+        emb_batch = fm.batch_images_to_embeddings(batch_paths)
 
         # Convertir a float16 para almacenamiento
         emb_batch_f16 = emb_batch.astype(np.float16)
@@ -100,20 +128,20 @@ if paths_to_compute:
             emb_bytes = emb_batch_f16[j].tobytes()
             idx = indexes_to_compute[start + j]
 
-            id_, marca, tipo, imagen_path = to_process[idx]
-            fn.insertar_chapa(id_, marca, tipo, str(imagen_path), emb_bytes)
+            cap_id, brand, cap_type, image_path = to_process[idx]
+            fn.save_cap(cap_id, brand, cap_type, str(image_path), emb_bytes)
 
 
-# --------------------------------------------------
-# Insertar o actualizar filas que ya tenían embedding
-# --------------------------------------------------
-for id_, marca, tipo, imagen_path in to_process:
-    if imagen_path in have_emb:
-        fn.insertar_chapa(id_, marca, tipo, str(imagen_path), have_emb[imagen_path])
-    # Si no estaba en have_emb, ya se insertó en el paso anterior
+# ======================================================
+# 7. ACTUALIZAR FILAS QUE YA TENÍAN EMBEDDING
+# ======================================================
+
+for cap_id, brand, cap_type, image_path in to_process:
+    if str(image_path) in have_emb:
+        fn.save_cap(cap_id, brand, cap_type, str(image_path), have_emb[str(image_path)])
 
 
-print("Importación completada.")
+print("Importación completada correctamente.")
 
 # Recargar embeddings en RAM para búsquedas rápidas
-fn.reload_embeddings()
+fn.refresh_embeddings()

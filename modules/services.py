@@ -1,34 +1,56 @@
-# services.py
-# Lógica principal: acceso a base de datos, embeddings, búsqueda y exportación.
+"""
+services.py
+------------
+Módulo principal de lógica de negocio para CapCollection.
+
+Responsabilidades:
+- Acceso a base de datos SQLite
+- Gestión de embeddings en memoria
+- Búsqueda por marca y por imagen
+- Exportación de datos a Excel
+"""
 
 import sqlite3
 import os
-import numpy as np
 from datetime import datetime
-import pandas as pd
-
 from pathlib import Path
 
-# BASE_DIR = carpeta raíz del proyecto (donde está app.py)
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-DB_FILE = BASE_DIR / "assets" / "data" / "capcollection.db"
-IMAGES_DIR = BASE_DIR / "assets" / "images"
-
-# Estado interno para embeddings cargados en RAM
-_EMBEDDINGS_LOADED = False
-_emb_matrix = None        # Matriz numpy float32 (N, D)
-_emb_ids = None           # Lista de tuplas (id, marca, tipo, imagen)
-_emb_paths = None         # Lista de rutas de imagen
-_emb_dtype = np.float16   # Tipo de almacenamiento en BLOB
+import numpy as np
+import pandas as pd
 
 
-# --------------------------------------------------
-# Utilidades de Base de Datos
-# --------------------------------------------------
-def crear_bd():
-    """Crea la base de datos si no existe."""
-    with sqlite3.connect(DB_FILE) as conn:
+# ======================================================
+# 1. RUTAS Y CONFIGURACIÓN
+# ======================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+DB_PATH = PROJECT_ROOT / "assets" / "data" / "capcollection.db"
+IMAGES_DIR = PROJECT_ROOT / "assets" / "images"
+EXPORT_DIR = PROJECT_ROOT / "assets" / "data" / "exports"
+
+EMBEDDING_DTYPE = np.float16
+
+
+# ======================================================
+# 2. ESTADO INTERNO DE EMBEDDINGS (CACHE)
+# ======================================================
+
+class EmbeddingCache:
+    """Cache en memoria para acelerar búsquedas por imagen."""
+    loaded = False
+    matrix = None      # Matriz numpy (N, D)
+    ids = None         # Lista de tuplas (id, marca, tipo, imagen)
+    paths = None       # Lista de rutas de imagen
+
+
+# ======================================================
+# 3. UTILIDADES DE BASE DE DATOS
+# ======================================================
+
+def create_database():
+    """Crea la base de datos y la tabla principal si no existen."""
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS capcollection (
                 id INTEGER PRIMARY KEY,
@@ -42,7 +64,7 @@ def crear_bd():
 
 def ensure_embedding_column():
     """Añade la columna 'embedding' si no existe."""
-    with sqlite3.connect(DB_FILE) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
         cur.execute("PRAGMA table_info(capcollection)")
         columnas = [r[1] for r in cur.fetchall()]
@@ -51,146 +73,147 @@ def ensure_embedding_column():
             cur.execute("ALTER TABLE capcollection ADD COLUMN embedding BLOB")
 
 
-def insertar_chapa(id_, marca, tipo, imagen_path, emb_bytes=None):
+def save_cap(cap_id, brand, cap_type, image_path, embedding_blob=None):
     """
-    Inserta o reemplaza una chapa en la BD.
-    emb_bytes debe ser None o un BLOB generado con np.array.tobytes().
+    Inserta o actualiza una chapa en la base de datos.
     """
-    with sqlite3.connect(DB_FILE) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.execute("""
             INSERT OR REPLACE INTO capcollection (id, marca, tipo, imagen, embedding)
             VALUES (?, ?, ?, ?, ?)
-        """, (id_, marca, tipo, imagen_path, emb_bytes))
+        """, (cap_id, brand, cap_type, image_path, embedding_blob))
 
 
-def obtener_todas_chapas():
+def get_all_caps():
     """Devuelve todas las chapas almacenadas."""
-    with sqlite3.connect(DB_FILE) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT id, marca, tipo, imagen, embedding FROM capcollection ORDER BY id")
+        cur.execute("""
+            SELECT id, marca, tipo, imagen, embedding
+            FROM capcollection
+            ORDER BY id
+        """)
         return cur.fetchall()
 
 
-# --------------------------------------------------
-# Gestión de Embeddings en Memoria (Lazy Loading)
-# --------------------------------------------------
-def _load_embeddings_to_ram():
-    """Carga los embeddings desde la BD a memoria solo una vez."""
-    global _EMBEDDINGS_LOADED, _emb_matrix, _emb_ids, _emb_paths
+# ======================================================
+# 4. GESTIÓN DE EMBEDDINGS EN MEMORIA
+# ======================================================
 
-    if _EMBEDDINGS_LOADED:
+def _load_embeddings():
+    """Carga los embeddings desde la base de datos a memoria (lazy loading)."""
+    if EmbeddingCache.loaded:
         return
 
-    rows = obtener_todas_chapas()
+    rows = get_all_caps()
 
     if not rows:
-        _emb_matrix = np.empty((0, 0), dtype=np.float32)
-        _emb_ids = []
-        _emb_paths = []
-        _EMBEDDINGS_LOADED = True
+        EmbeddingCache.matrix = np.empty((0, 0), dtype=np.float32)
+        EmbeddingCache.ids = []
+        EmbeddingCache.paths = []
+        EmbeddingCache.loaded = True
         return
 
     embeddings = []
     ids_list = []
     paths = []
 
-    for id_, marca, tipo, imagen, blob in rows:
-        ids_list.append((id_, marca, tipo, imagen))
-        paths.append(imagen)
+    for cap_id, brand, cap_type, image_path, blob in rows:
+        ids_list.append((cap_id, brand, cap_type, image_path))
+        paths.append(image_path)
 
         if blob is None:
             embeddings.append(None)
         else:
-            arr = np.frombuffer(blob, dtype=_emb_dtype).astype(np.float32)
+            arr = np.frombuffer(blob, dtype=EMBEDDING_DTYPE).astype(np.float32)
             embeddings.append(arr)
 
-    # Filtrar embeddings válidos
     valid_embeddings = [e for e in embeddings if e is not None]
 
-    _emb_matrix = (
-        np.vstack(valid_embeddings) if valid_embeddings
-        else np.empty((0, 0), dtype=np.float32)
+    EmbeddingCache.matrix = (
+        np.vstack(valid_embeddings)
+        if valid_embeddings else np.empty((0, 0), dtype=np.float32)
     )
 
-    # Asociar filas solo con embeddings válidos
-    _emb_ids = [ids_list[i] for i, e in enumerate(embeddings) if e is not None]
-    _emb_paths = [paths[i] for i, e in enumerate(embeddings) if e is not None]
+    EmbeddingCache.ids = [
+        ids_list[i] for i, e in enumerate(embeddings) if e is not None
+    ]
+    EmbeddingCache.paths = [
+        paths[i] for i, e in enumerate(embeddings) if e is not None
+    ]
 
-    _EMBEDDINGS_LOADED = True
-
-
-def reload_embeddings():
-    """Fuerza recarga de embeddings desde la BD."""
-    global _EMBEDDINGS_LOADED
-    _EMBEDDINGS_LOADED = False
-    _load_embeddings_to_ram()
+    EmbeddingCache.loaded = True
 
 
-# --------------------------------------------------
-# Búsquedas
-# --------------------------------------------------
-def buscar_por_marca(texto):
+def refresh_embeddings():
+    """Fuerza recarga de embeddings desde la base de datos."""
+    EmbeddingCache.loaded = False
+    _load_embeddings()
+
+
+# ======================================================
+# 5. BÚSQUEDAS
+# ======================================================
+
+def search_by_brand(text):
     """Busca chapas por coincidencia parcial en la marca."""
-    texto = texto.lower()
+    text = text.lower()
 
-    with sqlite3.connect(DB_FILE) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
         cur.execute("""
             SELECT id, marca, tipo, imagen
             FROM capcollection
             WHERE LOWER(marca) LIKE ?
-        """, (f"%{texto}%",))
+        """, (f"%{text}%",))
         return cur.fetchall()
 
 
-def buscar_por_imagen(path_query, top_k=8):
+def search_by_image(image_path, top_k=8):
     """
     Busca las chapas más similares a una imagen.
     Devuelve: [(row_tuple, similarity_score), ...]
     """
-    _load_embeddings_to_ram()
+    _load_embeddings()
 
     import modules.embeddings as fm
 
-    # Si no hay embeddings almacenados
-    if _emb_matrix.size == 0:
-        fm.imagen_a_embedding(path_query)  # Se calcula pero no se usa
+    if EmbeddingCache.matrix.size == 0:
+        fm.imagen_a_embedding(image_path)
         return []
 
-    # Embedding de la imagen de consulta
-    emb_q = fm.imagen_a_embedding(path_query).astype(np.float32)
+    query_emb = fm.imagen_a_embedding(image_path).astype(np.float32)
 
-    # Producto punto = similitud coseno (ya normalizado)
-    sims = (_emb_matrix @ emb_q).astype(np.float32)
+    sims = (EmbeddingCache.matrix @ query_emb).astype(np.float32)
 
-    # Top K
     idxs = np.argsort(sims)[::-1][:top_k]
 
-    return [( _emb_ids[i], float(sims[i]) ) for i in idxs]
+    return [(EmbeddingCache.ids[i], float(sims[i])) for i in idxs]
 
 
-def buscar_por_imagen_simple(path_query, top_k=5):
+def search_by_image_simple(image_path, top_k=5):
     """Versión simplificada: devuelve solo las filas sin score."""
-    resultados = buscar_por_imagen(path_query, top_k)
-    return [row for row, _ in resultados]
+    results = search_by_image(image_path, top_k)
+    return [row for row, _ in results]
 
 
-# --------------------------------------------------
-# Exportación a Excel
-# --------------------------------------------------
-def exportar_a_excel_version():
-    """Exporta la colección a un Excel con timestamp."""
-    os.makedirs("data/exports", exist_ok=True)
+# ======================================================
+# 6. EXPORTACIÓN
+# ======================================================
+
+def export_to_excel():
+    """Exporta la colección a un archivo Excel con timestamp."""
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    archivo = f"data/exports/capcollection_{timestamp}.xlsx"
+    file_path = EXPORT_DIR / f"capcollection_{timestamp}.xlsx"
 
-    with sqlite3.connect(DB_FILE) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         df = pd.read_sql_query("""
             SELECT id, marca, tipo, imagen
             FROM capcollection
             ORDER BY id
         """, conn)
 
-    df.to_excel(archivo, index=False)
-    return archivo
+    df.to_excel(file_path, index=False)
+    return file_path

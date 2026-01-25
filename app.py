@@ -1,176 +1,138 @@
-# app.py
-# Interfaz web en Streamlit para CapCollection
+"""
+app.py
+------
+Interfaz web en Streamlit para CapCollection.
+
+Responsabilidades:
+- Navegación principal
+- Búsqueda por marca
+- Búsqueda por imagen
+- Visualización en lista y galería
+- Ficha detallada de una chapa
+"""
 
 import streamlit as st
-import pathlib
 from pathlib import Path
 
 import modules.services as fn
 from modules.ui_theme import load_theme
 
-BASE_DIR = pathlib.Path(__file__).resolve().parent
+PROJECT_ROOT = Path(__file__).resolve().parent
 
-# --------------------------------------------------
-# Configuración básica
-# --------------------------------------------------
-st.set_page_config(page_title="CapCollection", layout="wide")
-load_theme()
-
-st.title("Maria's Collection")
-st.caption("La colección de chapas de botella de Maria A.G.")
-
-# --------------------------------------------------
-# Estado inicial
-# --------------------------------------------------
-if "resultados" not in st.session_state:
-    st.session_state.resultados = []
-if "modo_anterior" not in st.session_state:
-    st.session_state.modo_anterior = None
-if "selected_cap" not in st.session_state:
-    st.session_state.selected_cap = None
-
-# --------------------------------------------------
-# Toggle de tema (claro / oscuro)
-# --------------------------------------------------
-col_tema, _ = st.columns([1, 5])
-with col_tema:
-    tema_claro = st.toggle("Tema claro", value=False)
-
-if tema_claro:
-    st.markdown(
-        """
-        <style>
-        :root {
-            --bg-main: #ffffff !important;
-            --bg-card: #f3f3f3 !important;
-            --text-main: #222222 !important;
-            --text-muted: #555555 !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-else:
-    st.markdown(
-        """
-        <style>
-        :root {
-            --bg-main: #1e1e1e !important;
-            --bg-card: #2a2a2a !important;
-            --text-main: #eeeeee !important;
-            --text-muted: #bbbbbb !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-# --------------------------------------------------
-# Navegación principal (arriba, horizontal)
-# --------------------------------------------------
-st.markdown("### Navegación")
-modo = st.radio(
-    "",
-    ["Buscar por marca", "Buscar por imagen", "Mostrar todas"],
-    horizontal=True,
-    label_visibility="collapsed",
+st.set_page_config(
+    page_title="CapCollection",
+    layout="wide"
 )
 
-# Reset automático de resultados y selección al cambiar modo
-if modo != st.session_state.modo_anterior:
-    st.session_state.resultados = []
-    st.session_state.selected_cap = None
-st.session_state.modo_anterior = modo
+load_theme()
 
-# --------------------------------------------------
-# Funciones auxiliares
-# --------------------------------------------------
-def normalizar_imagen(imagen):
-    ruta = str(imagen).replace("\\", "/")
-    img_file = Path(ruta)
-    if not img_file.is_absolute():
-        img_file = BASE_DIR / img_file
-    return img_file
+session = st.session_state
+session.setdefault("resultados", [])
+session.setdefault("selected_cap", None)
+session.setdefault("modo_anterior", None)
+
+# ======================================================
+# TÍTULO SIN ENLACE
+# ======================================================
+
+st.markdown(""" 
+    <div style='font-size: 42px; font-weight: 700; margin-bottom: 0;'> 
+        CapCollection 
+    </div> 
+""", unsafe_allow_html=True) 
+
+st.caption("Colección de chapas de Maria A.G.")
+
+# ======================================================
+# TEMA CLARO/OSCURO (debajo del título)
+# ======================================================
+
+tema_claro = st.toggle("Tema claro", value=False)
+
+THEME_LIGHT = """
+<style>
+:root {
+    --bg-main: #ffffff;
+    --bg-card: #f3f3f3;
+    --text-main: #222222;
+    --text-muted: #555555;
+}
+</style>
+"""
+
+THEME_DARK = """
+<style>
+:root {
+    --bg-main: #1e1e1e;
+    --bg-card: #2a2a2a;
+    --text-main: #eeeeee;
+    --text-muted: #bbbbbb;
+}
+</style>
+"""
+
+st.markdown(THEME_LIGHT if tema_claro else THEME_DARK, unsafe_allow_html=True)
+
+# ======================================================
+# OPCIONES DE NAVEGACIÓN (debajo del tema)
+# ======================================================
+
+modo = st.radio(
+    "Selecciona un modo",
+    ["Buscar por marca", "Buscar por imagen", "Mostrar todas"],
+    horizontal=True
+)
+
+# Reset automático al cambiar de modo
+if modo != session.modo_anterior:
+    session.resultados = []
+    session.selected_cap = None
+
+session.modo_anterior = modo
 
 
-def mostrar_resultados_lista(resultados):
-    """Lista vertical de resultados (para buscar por marca / imagen)."""
-    if not resultados:
-        st.info("No se han encontrado resultados.")
-        return
 
-    for r in resultados:
-        id_, marca, tipo, imagen, *_ = r
-        img_file = normalizar_imagen(imagen)
+# ======================================================
+# FUNCIONES AUXILIARES
+# ======================================================
 
-        st.markdown("<div class='cap-card cap-card-list'>", unsafe_allow_html=True)
-        col1, col2 = st.columns([1.2, 3.8])
+def normalizar_imagen(path_str: str) -> Path:
+    ruta = Path(str(path_str).replace("\\", "/"))
+    return ruta if ruta.is_absolute() else PROJECT_ROOT / ruta
 
-        with col1:
-            if img_file.exists():
-                st.image(str(img_file), use_column_width=True)
-            else:
-                st.info("Sin imagen")
 
-        with col2:
-            st.markdown(
-                f"<div class='cap-title'>Marca: <strong>{marca}</strong></div>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"<div class='cap-subtitle'>Tipo: {tipo}</div>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"<div class='cap-meta'>ID: {id_}</div>",
-                unsafe_allow_html=True,
-            )
-            if st.button("Ver ficha", key=f"ver_{id_}"):
-                st.session_state.selected_cap = r
-        st.markdown("</div>", unsafe_allow_html=True)
+def tarjeta_chapa(r):
+    id_, marca, tipo, imagen, *_ = r
+    img_file = normalizar_imagen(imagen)
+
+    st.markdown("<div class='cap-card'>", unsafe_allow_html=True)
+
+    if img_file.exists():
+        st.image(str(img_file), width=150)
+    else:
+        st.markdown("<div style='color: var(--text-muted); font-size: 13px;'>Sin imagen</div>", unsafe_allow_html=True)
+
+    st.markdown(f"<div class='cap-title'>{marca}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='cap-subtitle'>{tipo}</div>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def mostrar_galeria(resultados):
-    """Cuadrícula fija (mostrar todas)."""
-    if not resultados:
-        st.info("No hay chapas en la colección.")
-        return
+    cols = st.columns(3)
+    for i, r in enumerate(resultados):
+        with cols[i % 3]:
+            tarjeta_chapa(r)
 
-    cols = st.columns(4)
-    i = 0
 
-    for r in resultados:
-        id_, marca, tipo, imagen, *_ = r
-        img_file = normalizar_imagen(imagen)
-
-        with cols[i % 4]:
-            st.markdown("<div class='cap-card cap-card-grid'>", unsafe_allow_html=True)
-            if img_file.exists():
-                st.image(str(img_file), use_column_width=True)
-            else:
-                st.info("Sin imagen")
-
-            st.markdown(
-                f"<div class='cap-title cap-title-center'>{marca}</div>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"<div class='cap-subtitle cap-subtitle-center'>{tipo}</div>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f"<div class='cap-meta cap-meta-center'>ID: {id_}</div>",
-                unsafe_allow_html=True,
-            )
-            if st.button("Ver ficha", key=f"ver_grid_{id_}"):
-                st.session_state.selected_cap = r
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        i += 1
+def mostrar_lista(resultados):
+    cols = st.columns(3)
+    for i, r in enumerate(resultados):
+        with cols[i % 3]:
+            tarjeta_chapa(r)
 
 
 def mostrar_ficha(chapa):
-    """Ficha detallada de una chapa."""
     if not chapa:
         return
 
@@ -180,11 +142,11 @@ def mostrar_ficha(chapa):
     st.markdown("---")
     st.markdown("### Ficha de la chapa seleccionada")
 
-    col1, col2 = st.columns([1.2, 1.8])
+    col1, col2 = st.columns([1, 2])
 
     with col1:
         if img_file.exists():
-            st.image(str(img_file), use_column_width=True)
+            st.image(str(img_file), width=250)
         else:
             st.info("Sin imagen")
 
@@ -194,66 +156,55 @@ def mostrar_ficha(chapa):
         st.markdown(f"**ID:** `{id_}`")
 
     if st.button("Cerrar ficha"):
-        st.session_state.selected_cap = None
+        session.selected_cap = None
 
 
-# --------------------------------------------------
-# MODO: Buscar por marca
-# --------------------------------------------------
+# ======================================================
+# CONTENIDO PRINCIPAL
+# ======================================================
+
+# ------------------ Buscar por marca ------------------
 if modo == "Buscar por marca":
-    st.subheader("Buscar por marca")
+    st.markdown(
+        "<div style='font-size:26px; font-weight:600; margin-top:20px;'>Buscar por marca</div>",
+        unsafe_allow_html=True
+    )   
 
-    marca = st.text_input(
-        "Marca",
-        placeholder="p. ej. Coca-Cola, Heineken...",
-        label_visibility="visible",
-    )
+    marca = st.text_input("Introduce una marca")
 
     if marca:
-        resultados = fn.buscar_por_marca(marca)
-        st.session_state.resultados = resultados
+        session.resultados = fn.search_by_brand(marca)
+        st.success(f"{len(session.resultados)} resultados encontrados")
 
-        if resultados:
-            st.success(f"{len(resultados)} resultados encontrados")
+    mostrar_lista(session.resultados)
 
-        mostrar_resultados_lista(resultados)
-
-# --------------------------------------------------
-# MODO: Buscar por imagen
-# --------------------------------------------------
+# ------------------ Buscar por imagen ------------------
 elif modo == "Buscar por imagen":
-    st.subheader("Buscar por imagen")
+    st.markdown(
+        "<div style='font-size:26px; font-weight:600; margin-top:20px;'>Buscar por imagen</div>",
+        unsafe_allow_html=True
+    )   
 
-    uploaded_file = st.file_uploader(
-        "Sube una imagen",
-        type=["png", "jpg", "jpeg"],
-    )
+    uploaded = st.file_uploader("Sube una imagen", type=["png", "jpg", "jpeg"])
 
-    if uploaded_file:
-        resultados = fn.buscar_por_imagen_simple(uploaded_file, top_k=5)
-        st.session_state.resultados = resultados
+    if uploaded:
+        session.resultados = fn.search_by_image_simple(uploaded, top_k=5)
+        st.success(f"{len(session.resultados)} coincidencias encontradas")
 
-        if resultados:
-            st.success(f"{len(resultados)} coincidencias encontradas")
+    mostrar_lista(session.resultados)
 
-        mostrar_resultados_lista(resultados)
-
-# --------------------------------------------------
-# MODO: Mostrar todas
-# --------------------------------------------------
+# ------------------ Mostrar todas ------------------
 else:
-    st.subheader("Todas las chapas")
+    st.markdown(
+        "<div style='font-size:26px; font-weight:600; margin-top:20px;'>Todas las chapas</div>",
+        unsafe_allow_html=True
+    )   
 
-    resultados = fn.obtener_todas_chapas()
-    st.session_state.resultados = resultados
+    session.resultados = fn.get_all_caps()
+    st.success(f"{len(session.resultados)} chapas en la colección")
 
-    if resultados:
-        st.success(f"{len(resultados)} chapas en la colección")
+    mostrar_galeria(session.resultados)
 
-    mostrar_galeria(resultados)
-
-# --------------------------------------------------
-# Ficha seleccionada (si la hay)
-# --------------------------------------------------
-if st.session_state.selected_cap is not None:
-    mostrar_ficha(st.session_state.selected_cap)
+# ------------------ Ficha ------------------
+if session.selected_cap:
+    mostrar_ficha(session.selected_cap)

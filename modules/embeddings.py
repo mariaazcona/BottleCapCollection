@@ -1,64 +1,103 @@
-# embeddings.py
-# Carga del modelo, preprocesado de imágenes y generación de embeddings.
+"""
+embeddings.py
+--------------
+Módulo encargado de cargar el modelo de visión (MobileNetV3 Small),
+preprocesar imágenes y generar embeddings normalizados para búsquedas
+por similitud.
 
+Responsabilidades:
+- Lazy loading del modelo
+- Transformación estándar de imágenes
+- Generación de embeddings individuales y por lotes
+"""
+
+from pathlib import Path
+from typing import List
+
+import numpy as np
 import torch
+from PIL import Image
 from torchvision import transforms, models
 from torchvision.models import MobileNet_V3_Small_Weights
-from PIL import Image
-import numpy as np
-
-# Selección automática de dispositivo
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-# Modelo cargado de forma perezosa (lazy loading)
-_model = None
-
-# Transformación estándar para MobileNetV3
-_transform = transforms.Compose([
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225]
-    )
-])
 
 
-# --------------------------------------------------
-# Carga del modelo (lazy)
-# --------------------------------------------------
-def _load_model():
-    """Carga MobileNetV3 Small con pesos preentrenados si no está ya cargado."""
-    global _model
+# ======================================================
+# 1. CONFIGURACIÓN Y ESTADO DEL MODELO
+# ======================================================
 
-    if _model is not None:
-        return _model
-
-    weights = MobileNet_V3_Small_Weights.DEFAULT
-    model = models.mobilenet_v3_small(weights=weights).to(device)
-    model.eval()
-
-    _model = model
-    return _model
-
-
-# --------------------------------------------------
-# Embedding de una sola imagen
-# --------------------------------------------------
-def imagen_a_embedding(path):
+class EmbeddingModel:
     """
-    Devuelve un embedding L2-normalizado como vector numpy float32 (1D).
+    Cache del modelo MobileNetV3 Small y sus transformaciones.
+    Se carga solo una vez (lazy loading).
     """
-    model = _load_model()
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = None
 
-    img = Image.open(path).convert("RGB")
-    tensor = _transform(img).unsqueeze(0).to(device)  # (1, C, H, W)
+    # Transformación estándar de ImageNet
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        )
+    ])
+
+    @classmethod
+    def load_model(cls):
+        """Carga MobileNetV3 Small si no está ya cargado."""
+        if cls.model is not None:
+            return cls.model
+
+        weights = MobileNet_V3_Small_Weights.DEFAULT
+        model = models.mobilenet_v3_small(weights=weights).to(cls.device)
+        model.eval()
+
+        cls.model = model
+        return cls.model
+
+
+# ======================================================
+# 2. FUNCIONES AUXILIARES
+# ======================================================
+
+def _load_image(path: str) -> Image.Image:
+    """Carga una imagen desde disco y la convierte a RGB."""
+    path = Path(path)
+
+    if not path.exists():
+        raise FileNotFoundError(f"Imagen no encontrada: {path}")
+
+    try:
+        return Image.open(path).convert("RGB")
+    except Exception as e:
+        raise RuntimeError(f"No se pudo abrir la imagen {path}: {e}")
+
+
+# ======================================================
+# 3. EMBEDDING DE UNA SOLA IMAGEN
+# ======================================================
+
+def image_to_embedding(path: str) -> np.ndarray:
+    """
+    Convierte una imagen en un embedding L2-normalizado usando MobileNetV3 Small.
+
+    Parámetros:
+        path (str): Ruta al archivo de imagen.
+
+    Devuelve:
+        np.ndarray: Vector de características normalizado (float32).
+    """
+    model = EmbeddingModel.load_model()
+    img = _load_image(path)
+
+    tensor = EmbeddingModel.transform(img).unsqueeze(0).to(EmbeddingModel.device)
 
     with torch.no_grad():
-        features = model.features(tensor)  # (1, C, H, W)
+        features = model.features(tensor)
         pooled = torch.nn.functional.adaptive_avg_pool2d(features, 1)
-        emb = pooled.squeeze().cpu().numpy()  # (C,)
+        emb = pooled.squeeze().cpu().numpy()
 
     # Normalización L2
     norm = np.linalg.norm(emb)
@@ -68,30 +107,40 @@ def imagen_a_embedding(path):
     return emb.astype(np.float32)
 
 
-# --------------------------------------------------
-# Embeddings por lotes (batch)
-# --------------------------------------------------
-def batch_imagenes_a_embeddings(paths):
+# ======================================================
+# 4. EMBEDDINGS POR LOTES
+# ======================================================
+
+def batch_images_to_embeddings(paths: List[str]) -> np.ndarray:
     """
     Procesa una lista de rutas de imagen y devuelve una matriz (N, D) float32.
+
+    Parámetros:
+        paths (List[str]): Lista de rutas de imágenes.
+
+    Devuelve:
+        np.ndarray: Matriz de embeddings normalizados (N, D).
     """
-    model = _load_model()
+    model = EmbeddingModel.load_model()
 
-    # Cargar imágenes
-    imgs = []
+    images = []
     for p in paths:
-        img = Image.open(p).convert("RGB")
-        imgs.append(_transform(img))
+        try:
+            img = _load_image(p)
+            images.append(EmbeddingModel.transform(img))
+        except Exception:
+            # Si una imagen falla, se ignora
+            continue
 
-    if not imgs:
+    if not images:
         return np.empty((0, 0), dtype=np.float32)
 
-    tensor = torch.stack(imgs).to(device)  # (N, C, H, W)
+    tensor = torch.stack(images).to(EmbeddingModel.device)
 
     with torch.no_grad():
         features = model.features(tensor)
         pooled = torch.nn.functional.adaptive_avg_pool2d(features, 1)
-        arr = pooled.squeeze(-1).squeeze(-1).cpu().numpy()  # (N, D)
+        arr = pooled.squeeze(-1).squeeze(-1).cpu().numpy()
 
     # Normalización L2 por fila
     norms = np.linalg.norm(arr, axis=1, keepdims=True)
