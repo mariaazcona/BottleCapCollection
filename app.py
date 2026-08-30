@@ -116,13 +116,10 @@ def cap_card(cap, score=None):
 
 
 def cap_grid(items):
-    """Galería de tarjetas en una rejilla de ancho fijo."""
-    columns = st.columns(GRID_COLUMNS)
-
-    for index, item in enumerate(items):
-        cap, score = item if isinstance(item, tuple) else (item, None)
-
-        with columns[index % GRID_COLUMNS]:
+    """Galería de tarjetas en una rejilla responsive."""
+    with st.container(key="cap_grid"):
+        for item in items:
+            cap, score = item if isinstance(item, tuple) else (item, None)
             cap_card(cap, score)
 
 

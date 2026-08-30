@@ -29,20 +29,24 @@
 }
 
 /* Grid de chapas: permite que las columnas salten de línea en pantallas estrechas */
-[data-testid="stHorizontalBlock"] {
+.st-key-cap_grid {
+    display: flex !important;
+    flex-direction: row !important;
     flex-wrap: wrap;
     gap: 0.75rem;
+    justify-content: flex-start;
 }
 
-[data-testid="stHorizontalBlock"] > div {
+.st-key-cap_grid > [data-testid="stLayoutWrapper"] {
     flex: 1 1 150px;
     min-width: 150px;
-    box-sizing: border-box;
+    max-width: 220px;
 }
 
 @media (max-width: 480px) {
-    [data-testid="stHorizontalBlock"] > div {
+    .st-key-cap_grid > [data-testid="stLayoutWrapper"] {
         flex: 1 1 30%;
         min-width: 30%;
+        max-width: 30%;
     }
 }
