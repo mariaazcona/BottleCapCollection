@@ -39,6 +39,9 @@ st.markdown("""
 #MainMenu {
     visibility: hidden;
 }
+button[aria-label="Fullscreen"] { 
+    display: none; 
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -176,7 +179,7 @@ with st.sidebar:
 st.title(TITLE, anchor=False)
 
 if uploaded:
-    st.subheader("Chapas más parecidas")
+    st.subheader("Chapas más parecidas", anchor=False)
 
     preview, _ = st.columns([1, 3])
     with preview:
@@ -197,7 +200,7 @@ else:
 
     results = filter_caps(caps, brand_query, selected_types)
 
-    st.subheader(f"{len(results)} chapas encontradas")
+    st.subheader(f"{len(results)} chapas encontradas", anchor=False)
 
     if results:
         cap_grid(paginate(results))
