@@ -11,7 +11,6 @@ Responsabilidades:
 """
 
 import sqlite3
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -30,6 +29,7 @@ IMAGES_DIR = PROJECT_ROOT / "assets" / "images"
 EXPORT_DIR = PROJECT_ROOT / "assets" / "data" / "exports"
 
 EMBEDDING_DTYPE = np.float16
+DEFAULT_IMAGE = IMAGES_DIR / "default.png"
 
 
 # ======================================================
@@ -165,24 +165,40 @@ def search_by_brand(text):
             SELECT id, marca, tipo, imagen
             FROM capcollection
             WHERE LOWER(marca) LIKE ?
+            ORDER BY id
         """, (f"%{text}%",))
         return cur.fetchall()
 
 
-def search_by_image(image_path, top_k=8):
+def get_types():
+    """Devuelve la lista de tipos distintos presentes en la colección."""
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT DISTINCT tipo
+            FROM capcollection
+            WHERE tipo IS NOT NULL AND tipo <> ''
+            ORDER BY tipo
+        """)
+        return [r[0] for r in cur.fetchall()]
+
+
+def search_by_image(image, top_k=8):
     """
     Busca las chapas más similares a una imagen.
+
+    Acepta una ruta en disco o un archivo en memoria (st.file_uploader).
     Devuelve: [(row_tuple, similarity_score), ...]
     """
+    # Import diferido: evita cargar torch hasta la primera búsqueda por imagen.
+    from modules import embeddings
+
     _load_embeddings()
 
-    import modules.embeddings as fm
-
     if EmbeddingCache.matrix.size == 0:
-        fm.imagen_a_embedding(image_path)
         return []
 
-    query_emb = fm.imagen_a_embedding(image_path).astype(np.float32)
+    query_emb = embeddings.image_to_embedding(image).astype(np.float32)
 
     sims = (EmbeddingCache.matrix @ query_emb).astype(np.float32)
 
@@ -191,14 +207,41 @@ def search_by_image(image_path, top_k=8):
     return [(EmbeddingCache.ids[i], float(sims[i])) for i in idxs]
 
 
-def search_by_image_simple(image_path, top_k=5):
+def search_by_image_simple(image, top_k=5):
     """Versión simplificada: devuelve solo las filas sin score."""
-    results = search_by_image(image_path, top_k)
-    return [row for row, _ in results]
+    return [row for row, _ in search_by_image(image, top_k)]
 
 
 # ======================================================
-# 6. EXPORTACIÓN
+# 6. RUTAS DE IMÁGENES
+# ======================================================
+
+def resolve_image_path(stored_path):
+    """
+    Traduce la ruta guardada en la base de datos a una ruta válida local.
+
+    La base de datos puede contener rutas absolutas de otra máquina
+    (por ejemplo de Windows), así que el nombre de archivo se vuelve a
+    resolver dentro de assets/images.
+    """
+    if not stored_path:
+        return None
+
+    normalized = Path(str(stored_path).replace("\\", "/"))
+
+    candidate = IMAGES_DIR / normalized.name
+    if candidate.exists():
+        return candidate
+
+    if normalized.is_absolute() and normalized.exists():
+        return normalized
+
+    candidate = PROJECT_ROOT / normalized
+    return candidate if candidate.exists() else None
+
+
+# ======================================================
+# 7. EXPORTACIÓN
 # ======================================================
 
 def export_to_excel():

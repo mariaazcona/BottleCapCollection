@@ -14,7 +14,8 @@ Incluye un sistema de búsqueda por imagen basado en **embeddings generados con 
 - Embeddings almacenados en **float16** para reducir espacio.
 - Exportación de la colección a Excel.
 - Funcionamiento completamente **offline**.
-- Interfaz con tema claro/oscuro.
+- Galería paginada con ficha detallada de cada chapa.
+- Tema oscuro por defecto (`.streamlit/config.toml`), conmutable desde el menú de Streamlit.
 - Carga de embeddings en RAM para búsquedas rápidas.
 
 ---
@@ -24,6 +25,7 @@ Incluye un sistema de búsqueda por imagen basado en **embeddings generados con 
 CapCollection/ 
 │ 
 ├── app.py                        # Interfaz Streamlit 
+├── .streamlit/config.toml        # Colores base del tema 
 ├── modules/ 
 │    ├── services.py              # Acceso a BD, búsquedas, embeddings en RAM 
 │    ├── embeddings.py            # Modelo MobileNetV3 + generación de embeddings 
@@ -50,8 +52,13 @@ streamlit
 pillow
 numpy
 pandas
+openpyxl
 torch
 torchvision
+
+Instalación:
+
+pip install -r requirements.txt
 
 
 ---
@@ -82,3 +89,5 @@ streamlit run app.py
 - Las imágenes deben estar en `assets/images/`.
 - El archivo Excel debe estar en `assets/data/capcollection.xlsx`.
 - Los embeddings se almacenan en la base de datos para acelerar las búsquedas.
+- Las rutas de imagen guardadas en la base de datos se resuelven por nombre de archivo
+  dentro de `assets/images/`, así que la colección funciona en cualquier ordenador.

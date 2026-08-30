@@ -30,12 +30,13 @@ def load_theme() -> None:
     Carga el archivo CSS personalizado e inyecta su contenido en Streamlit.
 
     Si el archivo no existe, no genera error; simplemente no aplica estilos.
+    Los colores base del tema se configuran en .streamlit/config.toml.
     """
-    if CSS_PATH.exists():
-        try:
-            css = CSS_PATH.read_text(encoding="utf-8")
-            st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-        except Exception as e:
-            st.warning(f"No se pudo cargar el tema CSS: {e}")
-    else:
-        st.info("Archivo de estilos no encontrado: assets/styles.css")
+    if not CSS_PATH.exists():
+        return
+
+    try:
+        css = CSS_PATH.read_text(encoding="utf-8")
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+    except OSError as e:
+        st.warning(f"No se pudo cargar el tema CSS: {e}")

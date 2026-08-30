@@ -12,7 +12,7 @@ Responsabilidades:
 """
 
 from pathlib import Path
-from typing import List
+from typing import IO, List, Union
 
 import numpy as np
 import torch
@@ -62,35 +62,50 @@ class EmbeddingModel:
 # 2. FUNCIONES AUXILIARES
 # ======================================================
 
-def _load_image(path: str) -> Image.Image:
-    """Carga una imagen desde disco y la convierte a RGB."""
-    path = Path(path)
+ImageSource = Union[str, Path, IO[bytes]]
 
-    if not path.exists():
-        raise FileNotFoundError(f"Imagen no encontrada: {path}")
+
+def _load_image(source: ImageSource) -> Image.Image:
+    """
+    Carga una imagen y la convierte a RGB.
+
+    Acepta una ruta en disco o un objeto de archivo en memoria
+    (por ejemplo el resultado de st.file_uploader).
+    """
+    if isinstance(source, (str, Path)):
+        path = Path(source)
+
+        if not path.exists():
+            raise FileNotFoundError(f"Imagen no encontrada: {path}")
+
+        try:
+            return Image.open(path).convert("RGB")
+        except Exception as e:
+            raise RuntimeError(f"No se pudo abrir la imagen {path}: {e}")
 
     try:
-        return Image.open(path).convert("RGB")
+        source.seek(0)
+        return Image.open(source).convert("RGB")
     except Exception as e:
-        raise RuntimeError(f"No se pudo abrir la imagen {path}: {e}")
+        raise RuntimeError(f"No se pudo abrir la imagen subida: {e}")
 
 
 # ======================================================
 # 3. EMBEDDING DE UNA SOLA IMAGEN
 # ======================================================
 
-def image_to_embedding(path: str) -> np.ndarray:
+def image_to_embedding(source: ImageSource) -> np.ndarray:
     """
     Convierte una imagen en un embedding L2-normalizado usando MobileNetV3 Small.
 
     Parámetros:
-        path (str): Ruta al archivo de imagen.
+        source: Ruta al archivo de imagen o archivo en memoria.
 
     Devuelve:
         np.ndarray: Vector de características normalizado (float32).
     """
     model = EmbeddingModel.load_model()
-    img = _load_image(path)
+    img = _load_image(source)
 
     tensor = EmbeddingModel.transform(img).unsqueeze(0).to(EmbeddingModel.device)
 
@@ -111,7 +126,7 @@ def image_to_embedding(path: str) -> np.ndarray:
 # 4. EMBEDDINGS POR LOTES
 # ======================================================
 
-def batch_images_to_embeddings(paths: List[str]) -> np.ndarray:
+def batch_images_to_embeddings(paths: List[ImageSource]) -> np.ndarray:
     """
     Procesa una lista de rutas de imagen y devuelve una matriz (N, D) float32.
 

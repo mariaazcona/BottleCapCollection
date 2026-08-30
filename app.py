@@ -4,207 +4,217 @@ app.py
 Interfaz web en Streamlit para CapCollection.
 
 Responsabilidades:
-- Navegación principal
-- Búsqueda por marca
+- Filtros de la colección (marca y tipo)
 - Búsqueda por imagen
-- Visualización en lista y galería
+- Galería paginada de chapas
 - Ficha detallada de una chapa
+- Exportación a Excel
 """
 
-import streamlit as st
 from pathlib import Path
+
+import streamlit as st
 
 import modules.services as fn
 from modules.ui_theme import load_theme
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PAGE_SIZE = 24
+GRID_COLUMNS = 4
+CARD_HEIGHT = 400
 
 st.set_page_config(
     page_title="CapCollection",
-    layout="wide"
+    page_icon="🍾",
+    layout="wide",
 )
 
 load_theme()
 
 session = st.session_state
-session.setdefault("resultados", [])
-session.setdefault("selected_cap", None)
-session.setdefault("modo_anterior", None)
-
-# ======================================================
-# TÍTULO SIN ENLACE
-# ======================================================
-
-st.markdown(""" 
-    <div style='font-size: 42px; font-weight: 700; margin-bottom: 0;'> 
-        CapCollection 
-    </div> 
-""", unsafe_allow_html=True) 
-
-st.caption("Colección de chapas de Maria A.G.")
-
-# ======================================================
-# TEMA CLARO/OSCURO (debajo del título)
-# ======================================================
-
-tema_claro = st.toggle("Tema claro", value=False)
-
-THEME_LIGHT = """
-<style>
-:root {
-    --bg-main: #ffffff;
-    --bg-card: #f3f3f3;
-    --text-main: #222222;
-    --text-muted: #555555;
-}
-</style>
-"""
-
-THEME_DARK = """
-<style>
-:root {
-    --bg-main: #1e1e1e;
-    --bg-card: #2a2a2a;
-    --text-main: #eeeeee;
-    --text-muted: #bbbbbb;
-}
-</style>
-"""
-
-st.markdown(THEME_LIGHT if tema_claro else THEME_DARK, unsafe_allow_html=True)
-
-# ======================================================
-# OPCIONES DE NAVEGACIÓN (debajo del tema)
-# ======================================================
-
-modo = st.radio(
-    "Selecciona un modo",
-    ["Buscar por marca", "Buscar por imagen", "Mostrar todas"],
-    horizontal=True
-)
-
-# Reset automático al cambiar de modo
-if modo != session.modo_anterior:
-    session.resultados = []
-    session.selected_cap = None
-
-session.modo_anterior = modo
-
+session.setdefault("page", 0)
+session.setdefault("filters", None)
 
 
 # ======================================================
-# FUNCIONES AUXILIARES
+# DATOS
 # ======================================================
 
-def normalizar_imagen(path_str: str) -> Path:
-    ruta = Path(str(path_str).replace("\\", "/"))
-    return ruta if ruta.is_absolute() else PROJECT_ROOT / ruta
+@st.cache_data(show_spinner=False)
+def load_caps():
+    """Devuelve la colección completa como lista de diccionarios."""
+    return [
+        {"id": cap_id, "marca": marca or "", "tipo": tipo or "", "imagen": imagen}
+        for cap_id, marca, tipo, imagen, _ in fn.get_all_caps()
+    ]
 
 
-def tarjeta_chapa(r):
-    id_, marca, tipo, imagen, *_ = r
-    img_file = normalizar_imagen(imagen)
+def filter_caps(caps, brand, types):
+    """Filtra la colección por texto de marca y por tipos seleccionados."""
+    brand = brand.strip().lower()
 
-    st.markdown("<div class='cap-card'>", unsafe_allow_html=True)
-
-    if img_file.exists():
-        st.image(str(img_file), width=150)
-    else:
-        st.markdown("<div style='color: var(--text-muted); font-size: 13px;'>Sin imagen</div>", unsafe_allow_html=True)
-
-    st.markdown(f"<div class='cap-title'>{marca}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='cap-subtitle'>{tipo}</div>", unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    return [
+        cap for cap in caps
+        if (not brand or brand in cap["marca"].lower())
+        and (not types or cap["tipo"] in types)
+    ]
 
 
-def mostrar_galeria(resultados):
-    cols = st.columns(3)
-    for i, r in enumerate(resultados):
-        with cols[i % 3]:
-            tarjeta_chapa(r)
+def search_similar(uploaded_file, top_k):
+    """Devuelve las chapas más parecidas a la imagen subida, con su similitud."""
+    results = fn.search_by_image(uploaded_file, top_k=top_k)
+
+    return [
+        ({"id": cap_id, "marca": marca or "", "tipo": tipo or "", "imagen": imagen},
+         score)
+        for (cap_id, marca, tipo, imagen), score in results
+    ]
 
 
-def mostrar_lista(resultados):
-    cols = st.columns(3)
-    for i, r in enumerate(resultados):
-        with cols[i % 3]:
-            tarjeta_chapa(r)
+# ======================================================
+# COMPONENTES
+# ======================================================
 
+def cap_image(cap, width="stretch"):
+    """Muestra la imagen de una chapa, o un aviso si no está disponible."""
+    path = fn.resolve_image_path(cap["imagen"])
 
-def mostrar_ficha(chapa):
-    if not chapa:
+    if path is None:
+        st.caption("Sin imagen")
         return
 
-    id_, marca, tipo, imagen, *_ = chapa
-    img_file = normalizar_imagen(imagen)
+    st.image(str(path), width=width)
 
-    st.markdown("---")
-    st.markdown("### Ficha de la chapa seleccionada")
 
-    col1, col2 = st.columns([1, 2])
+def cap_card(cap, score=None):
+    """Tarjeta compacta con imagen, marca, tipo y acceso a la ficha."""
+    height = CARD_HEIGHT + (50 if score is not None else 0)
 
-    with col1:
-        if img_file.exists():
-            st.image(str(img_file), width=250)
-        else:
-            st.info("Sin imagen")
+    with st.container(border=True, height=height):
+        cap_image(cap)
+        st.markdown(f"**{cap['marca'] or 'Sin marca'}**")
+        st.caption(cap["tipo"] or "Sin tipo")
 
-    with col2:
-        st.markdown(f"**Marca:** {marca}")
-        st.markdown(f"**Tipo:** {tipo}")
-        st.markdown(f"**ID:** `{id_}`")
+        if score is not None:
+            st.progress(max(0.0, min(1.0, score)), text=f"{score:.0%} de parecido")
 
-    if st.button("Cerrar ficha"):
-        session.selected_cap = None
+        if st.button("Ver ficha", key=f"cap-{cap['id']}", width="stretch"):
+            cap_details(cap)
+
+
+def cap_grid(items):
+    """Galería de tarjetas en una rejilla de ancho fijo."""
+    columns = st.columns(GRID_COLUMNS)
+
+    for index, item in enumerate(items):
+        cap, score = item if isinstance(item, tuple) else (item, None)
+
+        with columns[index % GRID_COLUMNS]:
+            cap_card(cap, score)
+
+
+@st.dialog("Ficha de la chapa", width="large")
+def cap_details(cap):
+    """Ventana con los datos completos de una chapa."""
+    left, right = st.columns([1, 1])
+
+    with left:
+        cap_image(cap, width=260)
+
+    with right:
+        st.subheader(cap["marca"] or "Sin marca")
+        st.write(f"**Tipo:** {cap['tipo'] or 'Sin tipo'}")
+        st.write(f"**ID:** {cap['id']}")
+        st.caption(Path(str(cap["imagen"]).replace("\\", "/")).name)
+
+
+def paginate(items):
+    """Recorta la lista a la página actual y dibuja el navegador de páginas."""
+    total_pages = max(1, -(-len(items) // PAGE_SIZE))
+    session.page = min(session.page, total_pages - 1)
+
+    start = session.page * PAGE_SIZE
+    page_items = items[start:start + PAGE_SIZE]
+
+    if total_pages > 1:
+        previous, indicator, following = st.columns([1, 2, 1])
+
+        with previous:
+            if st.button("Anterior", disabled=session.page == 0, width="stretch"):
+                session.page -= 1
+                st.rerun()
+
+        with indicator:
+            st.markdown(
+                f"<p class='pager'>Página {session.page + 1} de {total_pages}</p>",
+                unsafe_allow_html=True,
+            )
+
+        with following:
+            if st.button("Siguiente", disabled=session.page >= total_pages - 1,
+                         width="stretch"):
+                session.page += 1
+                st.rerun()
+
+    return page_items
+
+
+# ======================================================
+# BARRA LATERAL
+# ======================================================
+
+caps = load_caps()
+
+with st.sidebar:
+    st.header("CapCollection")
+    st.caption(f"{len(caps)} chapas en la colección")
+
+    st.subheader("Filtros")
+    brand_query = st.text_input("Marca", placeholder="Ej. Estrella Damm")
+    selected_types = st.multiselect("Tipo", fn.get_types())
+
+    st.subheader("Buscar por imagen")
+    uploaded = st.file_uploader("Sube una foto de una chapa",
+                                type=["png", "jpg", "jpeg"])
+    top_k = st.slider("Resultados", min_value=3, max_value=24, value=8)
+
+    st.subheader("Colección")
+    if st.button("Exportar a Excel", width="stretch"):
+        st.success(f"Exportado a {fn.export_to_excel().name}")
 
 
 # ======================================================
 # CONTENIDO PRINCIPAL
 # ======================================================
 
-# ------------------ Buscar por marca ------------------
-if modo == "Buscar por marca":
-    st.markdown(
-        "<div style='font-size:26px; font-weight:600; margin-top:20px;'>Buscar por marca</div>",
-        unsafe_allow_html=True
-    )   
+st.title("CapCollection")
+st.caption("Colección de chapas de Maria A.G.")
 
-    marca = st.text_input("Introduce una marca")
+if uploaded:
+    st.subheader("Chapas más parecidas")
 
-    if marca:
-        session.resultados = fn.search_by_brand(marca)
-        st.success(f"{len(session.resultados)} resultados encontrados")
+    preview, _ = st.columns([1, 3])
+    with preview:
+        st.image(uploaded, caption="Imagen de referencia", width=180)
 
-    mostrar_lista(session.resultados)
+    with st.spinner("Comparando con la colección..."):
+        matches = search_similar(uploaded, top_k)
 
-# ------------------ Buscar por imagen ------------------
-elif modo == "Buscar por imagen":
-    st.markdown(
-        "<div style='font-size:26px; font-weight:600; margin-top:20px;'>Buscar por imagen</div>",
-        unsafe_allow_html=True
-    )   
-
-    uploaded = st.file_uploader("Sube una imagen", type=["png", "jpg", "jpeg"])
-
-    if uploaded:
-        session.resultados = fn.search_by_image_simple(uploaded, top_k=5)
-        st.success(f"{len(session.resultados)} coincidencias encontradas")
-
-    mostrar_lista(session.resultados)
-
-# ------------------ Mostrar todas ------------------
+    if matches:
+        cap_grid(matches)
+    else:
+        st.info("Todavía no hay embeddings en la base de datos.")
 else:
-    st.markdown(
-        "<div style='font-size:26px; font-weight:600; margin-top:20px;'>Todas las chapas</div>",
-        unsafe_allow_html=True
-    )   
+    filters = (brand_query, tuple(selected_types))
+    if filters != session.filters:
+        session.filters = filters
+        session.page = 0
 
-    session.resultados = fn.get_all_caps()
-    st.success(f"{len(session.resultados)} chapas en la colección")
+    results = filter_caps(caps, brand_query, selected_types)
 
-    mostrar_galeria(session.resultados)
+    st.subheader("Galería")
+    st.caption(f"{len(results)} chapas encontradas")
 
-# ------------------ Ficha ------------------
-if session.selected_cap:
-    mostrar_ficha(session.selected_cap)
+    if results:
+        cap_grid(paginate(results))
+    else:
+        st.info("Ninguna chapa coincide con los filtros.")

@@ -29,7 +29,7 @@ venv.bak/
 # -----------------------------
 # STREAMLIT
 # -----------------------------
-.streamlit/
+.streamlit/secrets.toml
 
 # -----------------------------
 # EDITORES
