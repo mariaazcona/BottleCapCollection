@@ -11,7 +11,7 @@ Responsabilidades:
 """
 
 import sqlite3
-import os
+import base64
 from datetime import datetime
 from pathlib import Path
 
@@ -85,15 +85,21 @@ def save_cap(cap_id, brand, cap_type, image_path, embedding_blob=None):
 
 
 def get_all_caps():
-    """Devuelve todas las chapas almacenadas."""
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT id, marca, tipo, imagen, embedding
-            FROM capcollection
-            ORDER BY id
-        """)
-        return cur.fetchall()
+    """Devuelve todas las chapas almacenadas como diccionarios."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row   
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, marca, tipo, imagen, embedding
+        FROM capcollection
+        ORDER BY id
+    """)
+
+    resultados = cur.fetchall()
+    conn.close()
+    return resultados
+
 
 
 # ======================================================
@@ -150,6 +156,13 @@ def refresh_embeddings():
     EmbeddingCache.loaded = False
     _load_embeddings()
 
+def img_to_base64(path):
+    with open(path, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    return f"data:image/png;base64,{data}"
+
+
+
 
 # ======================================================
 # 5. BÚSQUEDAS
@@ -159,14 +172,20 @@ def search_by_brand(text):
     """Busca chapas por coincidencia parcial en la marca."""
     text = text.lower()
 
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT id, marca, tipo, imagen
-            FROM capcollection
-            WHERE LOWER(marca) LIKE ?
-        """, (f"%{text}%",))
-        return cur.fetchall()
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, marca, tipo, imagen
+        FROM capcollection
+        WHERE LOWER(marca) LIKE ?
+    """, (f"%{text}%",))
+
+    resultados = cur.fetchall()
+
+    conn.close()
+    return resultados
 
 
 def search_by_image(image_path, top_k=8):
@@ -179,10 +198,10 @@ def search_by_image(image_path, top_k=8):
     import modules.embeddings as fm
 
     if EmbeddingCache.matrix.size == 0:
-        fm.imagen_a_embedding(image_path)
+        fm.image_to_embedding(image_path)
         return []
 
-    query_emb = fm.imagen_a_embedding(image_path).astype(np.float32)
+    query_emb = fm.image_to_embedding(image_path).astype(np.float32)
 
     sims = (EmbeddingCache.matrix @ query_emb).astype(np.float32)
 

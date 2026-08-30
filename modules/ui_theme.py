@@ -18,7 +18,7 @@ import streamlit as st
 # ======================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CSS_PATH = PROJECT_ROOT / "assets" / "styles.css"
+CSS_PATH = PROJECT_ROOT / "styles.css"
 
 
 # ======================================================
@@ -38,4 +38,4 @@ def load_theme() -> None:
         except Exception as e:
             st.warning(f"No se pudo cargar el tema CSS: {e}")
     else:
-        st.info("Archivo de estilos no encontrado: assets/styles.css")
+        st.info("Archivo de estilos no encontrado: styles.css")
