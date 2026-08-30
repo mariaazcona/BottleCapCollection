@@ -14,7 +14,7 @@ Incluye un sistema de búsqueda por imagen basado en **embeddings generados con 
 - Embeddings almacenados en **float16** para reducir espacio.
 - Exportación de la colección a Excel.
 - Funcionamiento completamente **offline**.
-- Galería paginada con ficha detallada de cada chapa.
+- Galería paginada con filtros por marca y tipo.
 - Tema oscuro por defecto (`.streamlit/config.toml`), conmutable desde el menú de Streamlit.
 - Carga de embeddings en RAM para búsquedas rápidas.
 
@@ -26,13 +26,13 @@ CapCollection/
 │ 
 ├── app.py                        # Interfaz Streamlit 
 ├── .streamlit/config.toml        # Colores base del tema 
+├── styles.css                    # Estilos personalizados 
 ├── modules/ 
 │    ├── services.py              # Acceso a BD, búsquedas, embeddings en RAM 
 │    ├── embeddings.py            # Modelo MobileNetV3 + generación de embeddings 
 │    └── import_excel.py          # Importador desde Excel y generador de embeddings 
 │
 ├── assets/ 
-│    ├── styles.css               # Estilos personalizados 
 │    ├── data/ 
 │    │    ├── capcollection.db    # Base de datos SQLite 
 │    │    ├── capcollection.xlsx  # Archivo maestro de la colección 

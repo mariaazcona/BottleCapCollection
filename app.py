@@ -7,24 +7,21 @@ Responsabilidades:
 - Filtros de la colección (marca y tipo)
 - Búsqueda por imagen
 - Galería paginada de chapas
-- Ficha detallada de una chapa
-- Exportación a Excel
 """
-
-from pathlib import Path
 
 import streamlit as st
 
 import modules.services as fn
 from modules.ui_theme import load_theme
 
-PAGE_SIZE = 24
-GRID_COLUMNS = 4
-CARD_HEIGHT = 400
+TITLE = "Maria's CapCollection"
+PAGE_SIZE = 36
+GRID_COLUMNS = 6
+CARD_HEIGHT = 250
+SEARCH_RESULTS = 12
 
 st.set_page_config(
-    page_title="CapCollection",
-    page_icon="🍾",
+    page_title=TITLE,
     layout="wide",
 )
 
@@ -86,19 +83,15 @@ def cap_image(cap, width="stretch"):
 
 
 def cap_card(cap, score=None):
-    """Tarjeta compacta con imagen, marca, tipo y acceso a la ficha."""
+    """Tarjeta compacta con la imagen y el nombre de la chapa."""
     height = CARD_HEIGHT + (50 if score is not None else 0)
 
     with st.container(border=True, height=height):
         cap_image(cap)
         st.markdown(f"**{cap['marca'] or 'Sin marca'}**")
-        st.caption(cap["tipo"] or "Sin tipo")
 
         if score is not None:
             st.progress(max(0.0, min(1.0, score)), text=f"{score:.0%} de parecido")
-
-        if st.button("Ver ficha", key=f"cap-{cap['id']}", width="stretch"):
-            cap_details(cap)
 
 
 def cap_grid(items):
@@ -110,21 +103,6 @@ def cap_grid(items):
 
         with columns[index % GRID_COLUMNS]:
             cap_card(cap, score)
-
-
-@st.dialog("Ficha de la chapa", width="large")
-def cap_details(cap):
-    """Ventana con los datos completos de una chapa."""
-    left, right = st.columns([1, 1])
-
-    with left:
-        cap_image(cap, width=260)
-
-    with right:
-        st.subheader(cap["marca"] or "Sin marca")
-        st.write(f"**Tipo:** {cap['tipo'] or 'Sin tipo'}")
-        st.write(f"**ID:** {cap['id']}")
-        st.caption(Path(str(cap["imagen"]).replace("\\", "/")).name)
 
 
 def paginate(items):
@@ -165,7 +143,7 @@ def paginate(items):
 caps = load_caps()
 
 with st.sidebar:
-    st.header("CapCollection")
+    st.header(TITLE)
     st.caption(f"{len(caps)} chapas en la colección")
 
     st.subheader("Filtros")
@@ -175,19 +153,13 @@ with st.sidebar:
     st.subheader("Buscar por imagen")
     uploaded = st.file_uploader("Sube una foto de una chapa",
                                 type=["png", "jpg", "jpeg"])
-    top_k = st.slider("Resultados", min_value=3, max_value=24, value=8)
-
-    st.subheader("Colección")
-    if st.button("Exportar a Excel", width="stretch"):
-        st.success(f"Exportado a {fn.export_to_excel().name}")
 
 
 # ======================================================
 # CONTENIDO PRINCIPAL
 # ======================================================
 
-st.title("CapCollection")
-st.caption("Colección de chapas de Maria A.G.")
+st.title(TITLE)
 
 if uploaded:
     st.subheader("Chapas más parecidas")
@@ -197,7 +169,7 @@ if uploaded:
         st.image(uploaded, caption="Imagen de referencia", width=180)
 
     with st.spinner("Comparando con la colección..."):
-        matches = search_similar(uploaded, top_k)
+        matches = search_similar(uploaded, SEARCH_RESULTS)
 
     if matches:
         cap_grid(matches)

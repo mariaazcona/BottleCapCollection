@@ -18,7 +18,7 @@ import streamlit as st
 # ======================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CSS_PATH = PROJECT_ROOT / "assets" / "styles.css"
+CSS_PATH = PROJECT_ROOT / "styles.css"
 
 
 # ======================================================
