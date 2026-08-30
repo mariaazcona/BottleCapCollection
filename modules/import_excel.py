@@ -14,7 +14,6 @@ Responsabilidades:
 
 from pathlib import Path
 from math import ceil
-import os
 import sqlite3
 
 import numpy as np
