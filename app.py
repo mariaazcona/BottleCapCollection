@@ -27,6 +27,21 @@ st.set_page_config(
 
 load_theme()
 
+st.markdown("""
+<style>
+[data-testid="collapsedControl"] {
+    visibility: visible !important;
+    display: block !important;
+}
+[data-testid="stAppDeployButton"] {
+    display: none;
+}
+#MainMenu {
+    visibility: hidden;
+}
+</style>
+""", unsafe_allow_html=True)
+
 session = st.session_state
 session.setdefault("page", 0)
 session.setdefault("filters", None)
@@ -143,12 +158,11 @@ def paginate(items):
 caps = load_caps()
 
 with st.sidebar:
-    st.header(TITLE)
-    st.caption(f"{len(caps)} chapas en la colección")
+    st.header(f"{len(caps)} chapas en la colección")
 
     st.subheader("Filtros")
     brand_query = st.text_input("Marca", placeholder="Ej. Estrella Damm")
-    selected_types = st.multiselect("Tipo", fn.get_types())
+    selected_types = st.multiselect("Tipo", fn.get_types(), placeholder="Escoge uno o varios tipos")
 
     st.subheader("Buscar por imagen")
     uploaded = st.file_uploader("Sube una foto de una chapa",
@@ -159,7 +173,7 @@ with st.sidebar:
 # CONTENIDO PRINCIPAL
 # ======================================================
 
-st.title(TITLE)
+st.title(TITLE, anchor=False)
 
 if uploaded:
     st.subheader("Chapas más parecidas")
@@ -183,8 +197,7 @@ else:
 
     results = filter_caps(caps, brand_query, selected_types)
 
-    st.subheader("Galería")
-    st.caption(f"{len(results)} chapas encontradas")
+    st.subheader(f"{len(results)} chapas encontradas")
 
     if results:
         cap_grid(paginate(results))
