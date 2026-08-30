@@ -14,7 +14,7 @@ Incluye un sistema de búsqueda por imagen basado en **embeddings generados con 
 - Embeddings almacenados en **float16** para reducir espacio.
 - Exportación de la colección a Excel.
 - Funcionamiento completamente **offline**.
-- Galería paginada con ficha detallada de cada chapa.
+- Galería paginada con filtros por marca y tipo.
 - Tema oscuro por defecto (`.streamlit/config.toml`), conmutable desde el menú de Streamlit.
 - Carga de embeddings en RAM para búsquedas rápidas.
 
