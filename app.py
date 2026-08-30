@@ -42,6 +42,9 @@ st.markdown("""
 button[aria-label="Fullscreen"] { 
     display: none; 
 }
+button[kind="header"] {
+    display: none;
+}
 </style>
 """, unsafe_allow_html=True)
 
