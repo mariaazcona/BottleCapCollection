@@ -26,13 +26,13 @@ CapCollection/
 │ 
 ├── app.py                        # Interfaz Streamlit 
 ├── .streamlit/config.toml        # Colores base del tema 
+├── styles.css                    # Estilos personalizados 
 ├── modules/ 
 │    ├── services.py              # Acceso a BD, búsquedas, embeddings en RAM 
 │    ├── embeddings.py            # Modelo MobileNetV3 + generación de embeddings 
 │    └── import_excel.py          # Importador desde Excel y generador de embeddings 
 │
 ├── assets/ 
-│    ├── styles.css               # Estilos personalizados 
 │    ├── data/ 
 │    │    ├── capcollection.db    # Base de datos SQLite 
 │    │    ├── capcollection.xlsx  # Archivo maestro de la colección 
