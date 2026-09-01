@@ -14,7 +14,7 @@ import streamlit as st
 import modules.services as fn
 from modules.ui_theme import load_theme
 
-TITLE = "Maria's CapCollection"
+TITLE = "Maria's Cap Collection"
 PAGE_SIZE = 36
 GRID_COLUMNS = 6
 CARD_HEIGHT = 250
