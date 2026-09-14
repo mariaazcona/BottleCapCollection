@@ -12,10 +12,7 @@ Incluye un sistema de búsqueda por imagen basado en **embeddings generados con 
 - Búsqueda por imagen mediante embeddings (IA).
 - Base de datos local en **SQLite**.
 - Embeddings almacenados en **float16** para reducir espacio.
-- Exportación de la colección a Excel.
-- Funcionamiento completamente **offline**.
 - Galería paginada con filtros por marca y tipo.
-- Tema oscuro por defecto (`.streamlit/config.toml`), conmutable desde el menú de Streamlit.
 - Carga de embeddings en RAM para búsquedas rápidas.
 
 ---
@@ -35,8 +32,7 @@ CapCollection/
 ├── assets/ 
 │    ├── data/ 
 │    │    ├── capcollection.db    # Base de datos SQLite 
-│    │    ├── capcollection.xlsx  # Archivo maestro de la colección 
-│    │    └── exports/            # Exportaciones generadas 
+│    │    └── capcollection.xlsx  # Archivo maestro de la colección 
 │    └── images/                  # Carpeta con imágenes de chapas
 └── requirements.txt
 
@@ -85,9 +81,11 @@ streamlit run app.py
 
 ## Notas
 
-- El sistema funciona completamente offline.
 - Las imágenes deben estar en `assets/images/`.
 - El archivo Excel debe estar en `assets/data/capcollection.xlsx`.
 - Los embeddings se almacenan en la base de datos para acelerar las búsquedas.
-- Las rutas de imagen guardadas en la base de datos se resuelven por nombre de archivo
-  dentro de `assets/images/`, así que la colección funciona en cualquier ordenador.
+- Pasos para actualizar la colección:
+  1. Añadir nombre, tipo e imagen en el Excel Maestro.
+  2. Importar los datos desde el Excel (python modules/import_excel.py).
+  3. Git commit.
+  4. Reboot de Streamlit App.
