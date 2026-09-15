@@ -85,7 +85,7 @@ streamlit run app.py
 - El archivo Excel debe estar en `assets/data/capcollection.xlsx`.
 - Los embeddings se almacenan en la base de datos para acelerar las búsquedas.
 - Pasos para actualizar la colección:
-  1. Añadir nombre, tipo e imagen en el Excel Maestro.
+  1. Añadir nombre, tipo e imagen (image resize 113px) en el Excel Maestro.
   2. Importar los datos desde el Excel (python modules/import_excel.py).
   3. Git commit.
   4. Reboot de Streamlit App.

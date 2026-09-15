@@ -46,6 +46,9 @@ button[kind="header"] {
     display: none;
 }
 </style>
+<div class="app-footer">
+    © 2026 Maria's CapCollection - desde 2017.
+</div>
 """, unsafe_allow_html=True)
 
 session = st.session_state
@@ -68,11 +71,11 @@ def load_caps():
 
 def filter_caps(caps, brand, types):
     """Filtra la colección por texto de marca y por tipos seleccionados."""
-    brand = brand.strip().lower()
+    brand = fn.normalize(brand)
 
     return [
         cap for cap in caps
-        if (not brand or brand in cap["marca"].lower())
+        if (not brand or brand in fn.normalize(cap["marca"]))
         and (not types or cap["tipo"] in types)
     ]
 

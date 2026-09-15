@@ -6,13 +6,15 @@ Módulo principal de lógica de negocio para CapCollection.
 Responsabilidades:
 - Acceso a base de datos SQLite
 - Gestión de embeddings en memoria
-- Búsqueda por marca y por imagen
-- Exportación de datos a Excel
+- Búsqueda por tipo, marca y por imagen
 """
 
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
+import re
+import unicodedata
 
 import numpy as np
 import pandas as pd
@@ -33,7 +35,32 @@ DEFAULT_IMAGE = IMAGES_DIR / "default.png"
 
 
 # ======================================================
-# 2. ESTADO INTERNO DE EMBEDDINGS (CACHE)
+# 2. CONEXIÓN A BASE DE DATOS
+# ======================================================
+
+@contextmanager
+def get_connection():
+    """
+    Abre una conexión a la base de datos.
+
+    Hace commit automático si el bloque termina sin errores, rollback si
+    se produce una excepción, y en cualquier caso cierra la conexión al
+    salir (a diferencia de `with sqlite3.connect(...)`, que NO cierra la
+    conexión por sí solo).
+    """
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+# ======================================================
+# 3. ESTADO INTERNO DE EMBEDDINGS (CACHE)
 # ======================================================
 
 class EmbeddingCache:
@@ -45,12 +72,12 @@ class EmbeddingCache:
 
 
 # ======================================================
-# 3. UTILIDADES DE BASE DE DATOS
+# 4. UTILIDADES DE BASE DE DATOS
 # ======================================================
 
 def create_database():
     """Crea la base de datos y la tabla principal si no existen."""
-    with sqlite3.connect(DB_PATH) as conn:
+    with get_connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS capcollection (
                 id INTEGER PRIMARY KEY,
@@ -64,7 +91,7 @@ def create_database():
 
 def ensure_embedding_column():
     """Añade la columna 'embedding' si no existe."""
-    with sqlite3.connect(DB_PATH) as conn:
+    with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("PRAGMA table_info(capcollection)")
         columnas = [r[1] for r in cur.fetchall()]
@@ -77,7 +104,7 @@ def save_cap(cap_id, brand, cap_type, image_path, embedding_blob=None):
     """
     Inserta o actualiza una chapa en la base de datos.
     """
-    with sqlite3.connect(DB_PATH) as conn:
+    with get_connection() as conn:
         conn.execute("""
             INSERT OR REPLACE INTO capcollection (id, marca, tipo, imagen, embedding)
             VALUES (?, ?, ?, ?, ?)
@@ -86,7 +113,7 @@ def save_cap(cap_id, brand, cap_type, image_path, embedding_blob=None):
 
 def get_all_caps():
     """Devuelve todas las chapas almacenadas."""
-    with sqlite3.connect(DB_PATH) as conn:
+    with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("""
             SELECT id, marca, tipo, imagen, embedding
@@ -97,7 +124,7 @@ def get_all_caps():
 
 
 # ======================================================
-# 4. GESTIÓN DE EMBEDDINGS EN MEMORIA
+# 5. GESTIÓN DE EMBEDDINGS EN MEMORIA
 # ======================================================
 
 def _load_embeddings():
@@ -152,27 +179,21 @@ def refresh_embeddings():
 
 
 # ======================================================
-# 5. BÚSQUEDAS
+# 6. BÚSQUEDAS
 # ======================================================
 
-def search_by_brand(text):
-    """Busca chapas por coincidencia parcial en la marca."""
+def normalize(text):
+    """Minúsculas, sin acentos, solo letras y números."""
     text = text.lower()
-
-    with sqlite3.connect(DB_PATH) as conn:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT id, marca, tipo, imagen
-            FROM capcollection
-            WHERE LOWER(marca) LIKE ?
-            ORDER BY id
-        """, (f"%{text}%",))
-        return cur.fetchall()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = re.sub(r"[^a-z0-9]", "", text)
+    return text
 
 
 def get_types():
     """Devuelve la lista de tipos distintos presentes en la colección."""
-    with sqlite3.connect(DB_PATH) as conn:
+    with get_connection() as conn:
         cur = conn.cursor()
         cur.execute("""
             SELECT DISTINCT tipo
@@ -213,7 +234,7 @@ def search_by_image_simple(image, top_k=5):
 
 
 # ======================================================
-# 6. RUTAS DE IMÁGENES
+# 7. RUTAS DE IMÁGENES
 # ======================================================
 
 def resolve_image_path(stored_path):
@@ -241,7 +262,7 @@ def resolve_image_path(stored_path):
 
 
 # ======================================================
-# 7. EXPORTACIÓN
+# 8. EXPORTACIÓN (función en desuso)
 # ======================================================
 
 def export_to_excel():
@@ -251,7 +272,7 @@ def export_to_excel():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     file_path = EXPORT_DIR / f"capcollection_{timestamp}.xlsx"
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with get_connection() as conn:
         df = pd.read_sql_query("""
             SELECT id, marca, tipo, imagen
             FROM capcollection

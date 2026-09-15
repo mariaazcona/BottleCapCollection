@@ -50,3 +50,17 @@
         max-width: 30%;
     }
 }
+
+/* Pie de página */
+.app-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    padding: 0.5rem 0;
+    background: var(--background-color, rgba(13, 1, 118, 0.18));
+    z-index: 100;
+}
